@@ -2,45 +2,18 @@
 <!-- Created with Inkscape (http://www.inkscape.org/) -->
 
 <svg
-   width="210mm"
-   height="297mm"
-   viewBox="0 0 210 297"
+   width="114.0577mm"
+   height="16.064615mm"
+   viewBox="0 0 114.0577 16.064615"
    version="1.1"
    id="svg1"
-   inkscape:version="1.3.2 (091e20ef0f, 2023-11-25)"
-   sodipodi:docname="disk-layout.svg"
-   inkscape:export-filename="disk-layout.svg"
-   inkscape:export-xdpi="96"
-   inkscape:export-ydpi="96"
-   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
-   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
    xmlns="http://www.w3.org/2000/svg"
    xmlns:svg="http://www.w3.org/2000/svg">
-  <sodipodi:namedview
-     id="namedview1"
-     pagecolor="#ffffff"
-     bordercolor="#000000"
-     borderopacity="0.25"
-     inkscape:showpageshadow="2"
-     inkscape:pageopacity="0.0"
-     inkscape:pagecheckerboard="0"
-     inkscape:deskcolor="#d1d1d1"
-     inkscape:document-units="mm"
-     inkscape:zoom="1.8220149"
-     inkscape:cx="330.95229"
-     inkscape:cy="174.25763"
-     inkscape:window-width="3840"
-     inkscape:window-height="2091"
-     inkscape:window-x="0"
-     inkscape:window-y="0"
-     inkscape:window-maximized="1"
-     inkscape:current-layer="layer1" />
   <defs
      id="defs1" />
   <g
-     inkscape:label="Layer 1"
-     inkscape:groupmode="layer"
-     id="layer1">
+     id="layer1"
+     transform="translate(-13.043583,-16.934112)">
     <g
        id="g8"
        transform="translate(0,-0.1143322)">
@@ -57,12 +30,10 @@
          x="15.192742"
          y="23.97591"
          id="text1"><tspan
-           sodipodi:role="line"
            id="tspan1"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.23333px;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
            x="15.192742"
            y="23.97591">Super</tspan><tspan
-           sodipodi:role="line"
            style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:4.23333px;font-family:'DejaVu Sans';-inkscape-font-specification:'DejaVu Sans, Normal';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-variant-east-asian:normal;fill:#000000;fill-opacity:1;stroke:none;stroke-width:0.264583"
            x="15.192742"
            y="29.267572"
@@ -84,12 +55,10 @@
          x="33.170113"
          y="23.627831"
          id="text3"><tspan
-           sodipodi:role="line"
            id="tspan3"
            style="stroke-width:0.264583"
            x="33.170113"
            y="23.627831">Inode</tspan><tspan
-           sodipodi:role="line"
            style="stroke-width:0.264583"
            x="33.170113"
            y="28.919493"
@@ -111,12 +80,10 @@
          x="55.19857"
          y="23.554455"
          id="text5"><tspan
-           sodipodi:role="line"
            id="tspan5"
            style="stroke-width:0.264583"
            x="55.19857"
            y="23.554455">Data</tspan><tspan
-           sodipodi:role="line"
            style="stroke-width:0.264583"
            x="55.19857"
            y="28.846117"
@@ -138,7 +105,6 @@
          x="86.128914"
          y="26.782705"
          id="text7"><tspan
-           sodipodi:role="line"
            id="tspan7"
            style="stroke-width:0.264583"
            x="86.128914"
@@ -160,7 +126,6 @@
          x="127.48926"
          y="26.511528"
          id="text8"><tspan
-           sodipodi:role="line"
            id="tspan8"
            style="stroke-width:0.264583"
            x="127.48926"
