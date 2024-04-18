@@ -1,3 +1,4 @@
+#include <sys/types.h>
 #include <time.h>
 
 #define FUSE_USE_VERSION 30
