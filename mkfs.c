@@ -28,5 +28,7 @@ int main(int argc, char* argv[]){
         }
     } 
     printf("disk_img: %s, num_inodes: %d, num_datablocks: %d\n", disk_img, num_inodes, num_datablocks);
+    // disk img is file to write struct to
+    // write superblock to struct
 
 }
