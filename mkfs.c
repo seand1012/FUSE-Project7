@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>  
+#include <fcntl.h>
+#include <string.h>
 #include "wfs.h"
 #include <math.h>
 
@@ -115,10 +117,10 @@ int main(int argc, char* argv[]){
     fseek(fptr, start_inodes, SEEK_SET);
     struct wfs_inode rootInode;
     rootInode.num = 0;
-    rootInode.mode = 0;
+    rootInode.mode = S_IFDIR;
     rootInode.uid = 0;
     rootInode.gid = 0;
-    rootInode.size = sizeof(struct wfs_inode);
+    rootInode.size = BLOCK_SIZE;
     rootInode.nlinks = 0;
     rootInode.atim = 0;
     rootInode.mtim = 0;
