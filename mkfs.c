@@ -81,6 +81,7 @@ int main(int argc, char* argv[]){
 
     fseek(fptr, 0, SEEK_END);
     long int file_size = ftell(fptr);
+    printf("%d > %ld\n", end_init_fs, file_size);
     if (end_init_fs > file_size){
         printf("error the file system doesn't fit in disk_img: %d > %ld\n", end_init_fs, file_size);
         fclose(fptr);
@@ -93,11 +94,9 @@ int main(int argc, char* argv[]){
     super_block.d_bitmap_ptr = start_dbm;
     super_block.i_blocks_ptr = start_inodes;
     super_block.d_blocks_ptr = start_data;
-
-
     // write superblock to file
     fseek(fptr, 0, SEEK_SET);
-    if(fwrite(&super_block, sizeof(struct wfs_sb), 1, fptr) != 0){
+    if(fwrite(&super_block, sizeof(struct wfs_sb), 1, fptr) != 1){
         printf("error copying superblock to file\n");
     }
     
@@ -128,20 +127,17 @@ int main(int argc, char* argv[]){
     for (int i = 0; i < N_BLOCKS; i++){
         rootInode.blocks[i] = 0;
     }
+
     // TODO init field of inode?
-    if (fwrite(&rootInode, sizeof(struct wfs_inode), 1, fptr) != 0) {
+    if (fwrite(&rootInode, sizeof(struct wfs_inode), 1, fptr) != 1) {
         printf("error copying root inode\n");
     }
-    // init data blocks in file
-    // int zero = 0;
-    // for (int i = 0; i < num_datablocks; i++){
-    //     fseek(fptr, start_data + (i * (BLOCK_SIZE)), SEEK_SET);
-    //     // rn writing 0s to datablocks to initialize
-    //     if (fwrite(&zero, (BLOCK_SIZE), 1, fptr) != 0) {
-    //         printf("error copying datablock %d\n", i);
-    //         break;
-    //     }
-    // }
+    
+    fseek(fptr, start_ibm, SEEK_SET);
+    int one = 1;
+    if (fwrite(&one, sizeof(int), 1, fptr) != 1){
+        printf("error writing to 0th index of inode bitmap\n");
+    }
 
     fclose(fptr);
     printf("disk_img: %s, num_inodes: %d, num_datablocks: %d\n", disk_img, num_inodes, num_datablocks);
