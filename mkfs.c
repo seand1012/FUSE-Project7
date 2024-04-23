@@ -8,13 +8,6 @@
 
 FILE* fptr;
 
-void writer_helper(void* ptr, int offset, int size){
-    if(fwrite(&ptr, sizeof(struct wfs_sb), 1, fptr) != 0){
-        return;
-    }
-
-    fseek(fptr, offset, SEEK_SET);
-}
 
 int main(int argc, char* argv[]){
     // can take -d -i and -b flags
