@@ -3,42 +3,59 @@
 #include <stdio.h>
 #include <string.h>
 
-typedef struct fuse_operations FuseOps;
+// parse the path
+// get to inode you need to be at
+// get or create at the point
+// need a traversal function
 
-static int wfs_getattr(){
+void* traversal(const char* path){
+    char* tok_path = strtok(path, "/");
+}
+
+static int wfs_getattr(const char *path, struct stat *stbuf){
+    printf("In wfs_getattr\n");
     return 0;
 }
 
+// creating a file
 static int wfs_mknod(){
+    printf("In wfs_mknod\n");
     return 0;
 }
 
+// creating a directory
 static int wfs_mkdir(){
+    printf("In wfs_mkdir\n");
     return 0;
 }
 
 static int wfs_unlink(){
+    printf("In wfs_unlink\n");
     return 0;
 }
 
 static int wfs_rmdir(){
+    printf("In wfs_rmdir\n");
     return 0;
 }
 
 static int wfs_read(){
+    printf("In wfs_read\n");
     return 0;
 }
 
 static int wfs_write(){
+    printf("In wfs_write\n");
     return 0;
 }
 
 static int wfs_readdir(){
+    printf("In wfs_readdir\n");
     return 0;
 }
 
 
-static FuseOps ops = {
+static struct fuse_operations ops = {
   .getattr = wfs_getattr,
   .mknod   = wfs_mknod,
   .mkdir   = wfs_mkdir,
@@ -48,8 +65,6 @@ static FuseOps ops = {
   .write   = wfs_write,
   .readdir = wfs_readdir,
 };
-
-
 
 
 int main(int argc, char* argv[]){
