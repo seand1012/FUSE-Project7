@@ -133,7 +133,7 @@ int main(int argc, char* argv[]){
     }
 
     struct wfs_dentry rootDataBlock;
-    rootDataBlock.name[0] = ".";
+    rootDataBlock.name[0] = '.';
     rootDataBlock.num = rootInode.num;
     fseek(fptr, start_data, SEEK_SET);
     if(fwrite(&rootDataBlock, sizeof(struct wfs_dentry), 1, fptr) != 1){
@@ -141,7 +141,7 @@ int main(int argc, char* argv[]){
     }
     
     fseek(fptr, start_dbm, SEEK_SET);
-    if(fwrite(&rootInode, sizeof(int), 1, fptr) != 1){
+    if(fwrite(&one, sizeof(int), 1, fptr) != 1){
         printf("error writing to bitmap");
     }
 
