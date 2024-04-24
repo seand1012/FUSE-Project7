@@ -2,6 +2,7 @@
 #include <fuse.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 
 // parse the path
 // get to inode you need to be at
@@ -10,6 +11,23 @@
 FILE* disk_img;
 char* disk_path;
 
+/*
+    helper method that will search for and return the inode idx of the child we are looking for in a directory
+    this function assumes disk_img is an open file
+    returns the num associated with this child or -1 if none is found (num will point to the idx in the inode bitmap)
+*/
+int findChild(int parentInodeIdx, char* child, int startInodes){
+    // find inode
+    struct wfs_inode parentDirectoryInode;
+    fseek(disk_img, startInodes + (parentInodeIdx * BLOCK_SIZE), SEEK_SET);
+    if (fread(&parentDirectoryInode, sizeof(struct wfs_inode), 1, disk_img) != 1){
+        printf("Error reading parentDirectoryInode from disk img\n");
+        fclose(disk_img);
+        return -1;
+    }
+    // is this parentnode a directory?
+    // if it is, explore children nodes, go through all wfs_dentry structs in the associated datablock
+}
 
 void* traversal(const char* path){
     // char* tok_path = strtok(path, "/");
@@ -32,6 +50,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         fclose(disk_img);
         return -1;
     }
+    superblock.d_blocks_ptr
     fclose(disk_img);
     printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
     
