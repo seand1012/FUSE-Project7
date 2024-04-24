@@ -51,7 +51,7 @@ int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
     return -1;
 }
 
-void* traversal(const char* path){
+int traversal(const char* path, struct wfs_inode buf){
     // char* tok_path = strtok(path, "/");
 
     return NULL;
@@ -89,17 +89,27 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         return -1;
     }
     
-    
     fseek(disk_img, 0, SEEK_SET);
     if (fread(&superblock, sizeof(struct wfs_sb), 1, disk_img) != 1){
         printf("Error reading superblock from disk img\n");
         fclose(disk_img);
         return -1;
     }
-
     printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
-
     fclose(disk_img);
+    // need to fill in st_uid, st_gid, st_atime, st_mtime, st_mode, st_size
+    struct wfs_inode destinationInode;
+    int result = traversal(path, destinationInode);
+    if (result == -1){
+        return -ENOENT;
+    }else{
+        stbuf->st_uid = destinationInode.uid;
+        stbuf->st_gid = destinationInode.gid;
+        stbuf->st_atime = destinationInode.atim;
+        stbuf->st_mtime = destinationInode.mtim;
+        stbuf->st_mode = destinationInode.mode;
+        stbuf->st_size = destinationInode.size;
+    }
     printf("exiting wfs_getattr\n");
     return 0;
 }
