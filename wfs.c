@@ -16,25 +16,37 @@ char* disk_path;
     this function assumes disk_img is an open file
     returns the num associated with this child or -1 if none is found (num will point to the idx in the inode bitmap)
 */
-int findChild(int parentInodeIdx, char* child, int startInodes){
+int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
     // find inode
     struct wfs_inode parentDirectoryInode;
-    fseek(disk_img, startInodes + (parentInodeIdx * BLOCK_SIZE), SEEK_SET);
+    fseek(disk_img, superblock.i_blocks_ptr + (parentInodeIdx * BLOCK_SIZE), SEEK_SET);
     if (fread(&parentDirectoryInode, sizeof(struct wfs_inode), 1, disk_img) != 1){
         printf("Error reading parentDirectoryInode from disk img\n");
         fclose(disk_img);
         return -1;
     }
     // is this parentnode a directory?
-    if (parentDirectoryInode.mode != __S_IFDIR){
+    if (parentDirectoryInode.mode != S_IFDIR){
         return -1;
     }
     // go through this inodes' datablocks. possible dentrys in a datablock is 512 / sizeof(wfs_dentry)
     for (int i = 0; i < N_BLOCKS; i++){
         off_t datablock_offset = parentDirectoryInode.blocks[i];
+        if (datablock_offset == 0){
+            continue;
+        }
+        for (int j = 0; j < (BLOCK_SIZE / sizeof(struct wfs_dentry)); j++){
+            struct wfs_dentry dentry;
+            if (fread(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
+                printf("error looking through datablock\n");
+            }
+            if (strcmp(dentry.name, child) == 0){
+                return dentry.num;
+            }
+        }
         // go through all wfs_dentry structs in the associated datablock
     }
-    // if it is, explore children nodes, 
+    return -1;
 }
 
 void* traversal(const char* path){
