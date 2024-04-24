@@ -48,8 +48,8 @@ int main(int argc, char* argv[]){
         num_inodes *= 32;
     }
 
-    int inode_bitmap[num_inodes];
-    int datablock_bitmap[num_datablocks];
+    // int inode_bitmap[num_inodes];
+    // int datablock_bitmap[num_datablocks];
     //int inodes[num_inodes * sizeof(struct wfs_inode)];
    
     int start_sb = 0;
@@ -95,14 +95,19 @@ int main(int argc, char* argv[]){
     
     // write inode bitmap to file
     fseek(fptr, start_ibm, SEEK_SET);
-    if (fwrite(inode_bitmap, sizeof(int), num_inodes, fptr) != num_inodes){
-        printf("error copying inode bitmap to file\n");
+    int zero = 0;
+    for (int i = 0; i < num_inodes; i++){
+        if (fwrite(&zero, sizeof(int), 1, fptr) != 1){
+            printf("error copying inode bitmap to file\n");
+        }
     }
 
     // write data bitmap to file
     fseek(fptr, start_dbm, SEEK_SET);
-    if (fwrite(datablock_bitmap, sizeof(int), num_datablocks, fptr) != num_datablocks){
-        printf("error copying data bitmap to file\n");
+    for (int i = 0; i < num_datablocks; i++){
+        if (fwrite(&zero, sizeof(int), 1, fptr) != 1){
+            printf("error copying inode bitmap to file\n");
+        }
     }
     
     // init inode blocks in file - inodes take up BLOCK_SIZE space according to piazza
@@ -132,8 +137,15 @@ int main(int argc, char* argv[]){
         printf("error writing to 0th index of inode bitmap\n");
     }
 
+    // init dentry in 0th datablock with "."
     struct wfs_dentry rootDataBlock;
-    rootDataBlock.name[0] = ".";
+    char* dot = ".";
+    int i;
+    int dot_length = strlen(dot);
+    for (i = 0 ; i < dot_length; i++){
+        rootDataBlock.name[i] = dot[i];
+    }
+    rootDataBlock.name[i] = '\0';
     rootDataBlock.num = rootInode.num;
     fseek(fptr, start_data, SEEK_SET);
     if(fwrite(&rootDataBlock, sizeof(struct wfs_dentry), 1, fptr) != 1){
@@ -141,7 +153,7 @@ int main(int argc, char* argv[]){
     }
     
     fseek(fptr, start_dbm, SEEK_SET);
-    if(fwrite(&rootInode, sizeof(int), 1, fptr) != 1){
+    if(fwrite(&one, sizeof(int), 1, fptr) != 1){
         printf("error writing to bitmap");
     }
 
