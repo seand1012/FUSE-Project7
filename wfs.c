@@ -51,7 +51,7 @@ int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
     return -1;
 }
 
-int traversal(const char* path, struct wfs_inode buf){
+int traversal(const char* path, struct wfs_inode* buf){
     char* token = strtok(path, "/");
     char *tok_path[256];
     int i = 0;
@@ -71,7 +71,7 @@ void printDataBitmap(struct wfs_sb superblock){
         if (fread(&dbm_value, sizeof(int), 1, disk_img) != 1){
             printf("error reading inode bitmap\n");
             fclose(disk_img);
-            return -1;
+            break;
         }
         printf("datablock %d in bitmap: %d\n", i, dbm_value);
     }
@@ -83,7 +83,7 @@ void printInodeBitmap(struct wfs_sb superblock){
         if (fread(&ibm_value, sizeof(int), 1, disk_img) != 1){
             printf("error reading inode bitmap\n");
             fclose(disk_img);
-            return -1;
+            break;
         }
         printf("inode %d in bitmap: %d\n", i, ibm_value);
     }
@@ -107,7 +107,9 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
     fclose(disk_img);
     // need to fill in st_uid, st_gid, st_atime, st_mtime, st_mode, st_size
     struct wfs_inode destinationInode;
-    int result = traversal(path, destinationInode);
+    memset(&destinationInode, 0, sizeof(struct wfs_inode));
+
+    int result = traversal(path, &destinationInode);
     if (result == -1){
         return -ENOENT;
     }else{
