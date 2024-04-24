@@ -9,7 +9,8 @@
 // need a traversal function
 
 void* traversal(const char* path){
-    char* tok_path = strtok(path, "/");
+    // char* tok_path = strtok(path, "/");
+    return NULL;
 }
 
 static int wfs_getattr(const char *path, struct stat *stbuf){
@@ -90,7 +91,13 @@ int main(int argc, char* argv[]){
     if (!disk_path || !mount_point){
         printf("Usage: ./wfs disk_path [flags] mount_point\n");
     }
-    // format will be ./wfs disk_path [flags] mount_point
 
-    return -1;
+    // format will be ./wfs disk_path [flags] mount_point
+    // before passing argc and argv into fuse_main, need to decrement argc and remove 0th arg
+    argc--;
+    for (int i = 0; i < argc; i++){
+        argv[i] = argv[i+1];
+    }
+    argv[argc] = NULL;
+    return fuse_main(argc, argv, &ops, NULL);
 }
