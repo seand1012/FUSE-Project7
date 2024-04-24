@@ -66,7 +66,7 @@ int main(int argc, char* argv[]){
     int end_init_fs = start_sb + sizeof(struct wfs_sb) + len_ibm + len_dbm + BLOCK_SIZE;
     // root inode is BLOCK_SIZE. init FS with one inode and no data?
 
-    fptr = fopen(disk_img, "a");
+    fptr = fopen(disk_img, "r+");
     if(fptr == NULL){
         printf("error opening disk_img\n");
         return -1;
