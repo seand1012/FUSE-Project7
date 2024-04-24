@@ -10,10 +10,12 @@
 
 void* traversal(const char* path){
     char* tok_path = strtok(path, "/");
+    printf("%s", tok_path);
 }
 
 static int wfs_getattr(const char *path, struct stat *stbuf){
     printf("In wfs_getattr\n");
+    traversal(path);
     return 0;
 }
 
