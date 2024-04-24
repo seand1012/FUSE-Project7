@@ -26,7 +26,15 @@ int findChild(int parentInodeIdx, char* child, int startInodes){
         return -1;
     }
     // is this parentnode a directory?
-    // if it is, explore children nodes, go through all wfs_dentry structs in the associated datablock
+    if (parentDirectoryInode.mode != __S_IFDIR){
+        return -1;
+    }
+    // go through this inodes' datablocks. possible dentrys in a datablock is 512 / sizeof(wfs_dentry)
+    for (int i = 0; i < N_BLOCKS; i++){
+        off_t datablock_offset = parentDirectoryInode.blocks[i];
+        // go through all wfs_dentry structs in the associated datablock
+    }
+    // if it is, explore children nodes, 
 }
 
 void* traversal(const char* path){
