@@ -10,6 +10,7 @@
 // need a traversal function
 FILE* disk_img;
 char* disk_path;
+struct wfs_sb superblock;
 
 /*
     helper method that will search for and return the inode idx of the child we are looking for in a directory
@@ -87,7 +88,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         printf("ERROR opening disk image in wfs_getattr\n");
         return -1;
     }
-    struct wfs_sb superblock;
+    
     
     fseek(disk_img, 0, SEEK_SET);
     if (fread(&superblock, sizeof(struct wfs_sb), 1, disk_img) != 1){
