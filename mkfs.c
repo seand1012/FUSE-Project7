@@ -136,7 +136,7 @@ int main(int argc, char* argv[]){
     rootDataBlock.name[0] = ".";
     rootDataBlock.num = rootInode.num;
     fseek(fptr, start_data, SEEK_SET);
-    if(fwrite(&rootInode, sizeof(struct wfs_dentry), 1, fptr) != 1){
+    if(fwrite(&rootDataBlock, sizeof(struct wfs_dentry), 1, fptr) != 1){
         printf("error writing the directory entry");
     }
     
