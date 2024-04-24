@@ -33,9 +33,10 @@ int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
     // go through this inodes' datablocks. possible dentrys in a datablock is 512 / sizeof(wfs_dentry)
     for (int i = 0; i < N_BLOCKS; i++){
         off_t datablock_offset = parentDirectoryInode.blocks[i];
-        if (datablock_offset == 0){
+        if (datablock_offset == 0){ // datablock is unititialized
             continue;
         }
+        // go through wfs_dentrys in this datablock
         for (int j = 0; j < (BLOCK_SIZE / sizeof(struct wfs_dentry)); j++){
             struct wfs_dentry dentry;
             if (fread(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
@@ -51,8 +52,7 @@ int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
 }
 
 void* traversal(const char* path){
-    //char* tok_path = strtok(path, "/");
-
+    // char* tok_path = strtok(path, "/");
 
     return NULL;
 }
@@ -73,9 +73,21 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         fclose(disk_img);
         return -1;
     }
-    fclose(disk_img);
+
     printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
-    
+
+    fseek(disk_img, superblock.i_bitmap_ptr, SEEK_SET);
+    for (int i = 0; i < superblock.num_inodes; i++){
+        int ibm_value;
+        if (fread(&ibm_value, sizeof(int), 1, disk_img) != 1){
+            printf("error reading inode bitmap\n");
+            fclose(disk_img);
+            return -1;
+        }
+        printf("inode %d in bitmap: %d\n", i, ibm_value);
+    }
+    fclose(disk_img);
+    printf("exiting wfs_getattr\n");
     return 0;
 }
 
