@@ -125,11 +125,24 @@ int main(int argc, char* argv[]){
     if (fwrite(&rootInode, sizeof(struct wfs_inode), 1, fptr) != 1) {
         printf("error copying root inode\n");
     }
-    
+
     fseek(fptr, start_ibm, SEEK_SET);
     int one = 1;
     if (fwrite(&one, sizeof(int), 1, fptr) != 1){
         printf("error writing to 0th index of inode bitmap\n");
+    }
+
+    struct wfs_dentry rootDataBlock;
+    rootDataBlock.name[0] = ".";
+    rootDataBlock.num = rootInode.num;
+    fseek(fptr, start_data, SEEK_SET);
+    if(fwrite(&rootInode, sizeof(struct wfs_dentry), 1, fptr) != 1){
+        printf("error writing the directory entry");
+    }
+    
+    fseek(fptr, start_dbm, SEEK_SET);
+    if(fwrite(&rootInode, sizeof(int), 1, fptr) != 1){
+        printf("error writing to bitmap");
     }
 
     fclose(fptr);

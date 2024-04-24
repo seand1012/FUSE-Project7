@@ -12,7 +12,7 @@ char* disk_path;
 
 
 void* traversal(const char* path){
-    // char* tok_path = strtok(path, "/");
+    char* tok_path = strtok(path, "/");
 
     return NULL;
 }
@@ -26,6 +26,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         return -1;
     }
     struct wfs_sb superblock;
+    
     fseek(disk_img, 0, SEEK_SET);
     if (fread(&superblock, sizeof(struct wfs_sb), 1, disk_img) != 1){
         printf("Error reading superblock from disk img\n");
