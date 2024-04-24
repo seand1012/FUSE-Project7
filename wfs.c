@@ -55,7 +55,30 @@ void* traversal(const char* path){
 
     return NULL;
 }
-
+void printDataBitmap(struct wfs_sb superblock){
+    fseek(disk_img, superblock.d_bitmap_ptr, SEEK_SET);
+    for (int i = 0; i < superblock.num_data_blocks; i++){
+        int dbm_value;
+        if (fread(&dbm_value, sizeof(int), 1, disk_img) != 1){
+            printf("error reading inode bitmap\n");
+            fclose(disk_img);
+            return -1;
+        }
+        printf("datablock %d in bitmap: %d\n", i, dbm_value);
+    }
+}
+void printInodeBitmap(struct wfs_sb superblock){
+    fseek(disk_img, superblock.i_bitmap_ptr, SEEK_SET);
+    for (int i = 0; i < superblock.num_inodes; i++){
+        int ibm_value;
+        if (fread(&ibm_value, sizeof(int), 1, disk_img) != 1){
+            printf("error reading inode bitmap\n");
+            fclose(disk_img);
+            return -1;
+        }
+        printf("inode %d in bitmap: %d\n", i, ibm_value);
+    }
+}
 static int wfs_getattr(const char *path, struct stat *stbuf){
     printf("In wfs_getattr\n");
     disk_img = fopen(disk_path, "r");
@@ -75,16 +98,6 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
 
     printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
 
-    fseek(disk_img, superblock.i_bitmap_ptr, SEEK_SET);
-    for (int i = 0; i < superblock.num_inodes; i++){
-        int ibm_value;
-        if (fread(&ibm_value, sizeof(int), 1, disk_img) != 1){
-            printf("error reading inode bitmap\n");
-            fclose(disk_img);
-            return -1;
-        }
-        printf("inode %d in bitmap: %d\n", i, ibm_value);
-    }
     fclose(disk_img);
     printf("exiting wfs_getattr\n");
     return 0;
