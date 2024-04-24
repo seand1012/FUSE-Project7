@@ -51,11 +51,13 @@ int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
     return -1;
 }
 
-void* traversal(const char* path){
-    // char* tok_path = strtok(path, "/");
+int traversal(const char* path, struct wfs_inode inode){
+    char* tok_path = strtok(path, "/");
+    printf("%s\n", tok_path);
 
-    return NULL;
+    return 0;
 }
+
 void printDataBitmap(struct wfs_sb superblock){
     fseek(disk_img, superblock.d_bitmap_ptr, SEEK_SET);
     for (int i = 0; i < superblock.num_data_blocks; i++){
@@ -82,6 +84,8 @@ void printInodeBitmap(struct wfs_sb superblock){
 }
 static int wfs_getattr(const char *path, struct stat *stbuf){
     printf("In wfs_getattr\n");
+    struct wfs_inode inode;
+    traversal(disk_path, inode);
     disk_img = fopen(disk_path, "r");
     // print contents of superblock - should be at offset 0
     if (!disk_img){
