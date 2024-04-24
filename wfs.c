@@ -7,15 +7,34 @@
 // get to inode you need to be at
 // get or create at the point
 // need a traversal function
+FILE* disk_img;
+char* disk_path;
+
 
 void* traversal(const char* path){
-    char* tok_path = strtok(path, "/");
-    printf("%s", tok_path);
+    // char* tok_path = strtok(path, "/");
+
+    return NULL;
 }
 
 static int wfs_getattr(const char *path, struct stat *stbuf){
     printf("In wfs_getattr\n");
-    traversal(path);
+    disk_img = fopen(disk_path, "r");
+    // print contents of superblock - should be at offset 0
+    if (!disk_img){
+        printf("ERROR opening disk image in wfs_getattr\n");
+        return -1;
+    }
+    struct wfs_sb superblock;
+    fseek(disk_img, 0, SEEK_SET);
+    if (fread(&superblock, sizeof(struct wfs_sb), 1, disk_img) != 1){
+        printf("Error reading superblock from disk img\n");
+        fclose(disk_img);
+        return -1;
+    }
+    fclose(disk_img);
+    printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
+    
     return 0;
 }
 
@@ -70,7 +89,6 @@ static struct fuse_operations ops = {
 
 
 int main(int argc, char* argv[]){
-    char* disk_path;
     char* mount_point;
     int f_flag = 0;
     int s_flag = 0;
@@ -83,6 +101,7 @@ int main(int argc, char* argv[]){
         }else{
             if (!disk_path){
                 disk_path = argv[i];
+                
             }else if(!mount_point){
                 mount_point = argv[i];
             }
@@ -92,7 +111,13 @@ int main(int argc, char* argv[]){
     if (!disk_path || !mount_point){
         printf("Usage: ./wfs disk_path [flags] mount_point\n");
     }
-    // format will be ./wfs disk_path [flags] mount_point
 
-    return -1;
+    // format will be ./wfs disk_path [flags] mount_point
+    // before passing argc and argv into fuse_main, need to decrement argc and remove 0th arg
+    argc--;
+    for (int i = 0; i < argc; i++){
+        argv[i] = argv[i+1];
+    }
+    argv[argc] = NULL;
+    return fuse_main(argc, argv, &ops, NULL);
 }
