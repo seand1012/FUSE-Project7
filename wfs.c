@@ -52,14 +52,21 @@ int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
 }
 
 int traversal(const char* path, struct wfs_inode* buf){
-    char* token = strtok(path, "/");
-    char *tok_path[256];
-    int i = 0;
+    printf("In traversal\n");
+    printf("Path: %s\n", path);
+    char path_copy[strlen(path) + 1];
+    strcpy(path_copy, path);
+
+    char* token = strtok(path_copy, "/");
+    // char *tok_path[256];
+    //int i = 0;
+    printf("About to enter while loop\n");
     while(token != NULL){
-        tok_path[i] = token;
+        // tok_path[i] = token;
+        printf("%s", token);
         token = strtok(NULL, "/");
     }
-    printf("%s\n", *token);
+    // printf("%s\n", *tok_path);
 
     return 0;
 }
@@ -108,7 +115,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
     // need to fill in st_uid, st_gid, st_atime, st_mtime, st_mode, st_size
     struct wfs_inode destinationInode;
     memset(&destinationInode, 0, sizeof(struct wfs_inode));
-
+    //printf("!! %s\n", path);
     int result = traversal(path, &destinationInode);
     if (result == -1){
         return -ENOENT;
