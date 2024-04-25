@@ -311,6 +311,7 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
     printf("In wfs_mknod\n");
     int result = createTraversal(path);
     struct wfs_inode new_inode;
+    int new_inode_idx = 0;
     if (result == -1){
         printf("invalid path in wfs_mknod\n");
         return -ENOENT;
@@ -320,7 +321,20 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // do we create data block?
         printf("Parent inode: %i\n", result);
-        if(w)
+        memset(&new_inode, 0, sizeof(struct wfs_inode));
+        new_inode.mode = mode;
+        new_inode.size = 0;
+
+        new_inode_idx = insertInodeBitmap();
+        if(new_inode_idx == -1){
+            printf("Failed getting inode index\n");
+            return -EIO;
+        }
+
+        if(writeInode(&new_inode, new_inode_idx) == -1){
+            printf("Failed to write inode\n");
+            return -EIO; // Return I/O error
+        }
     }
     return 0;
 }
