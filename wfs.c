@@ -177,6 +177,26 @@ void printInodeBitmap(struct wfs_sb superblock){
 // on success the idx this function returns should now be marked as 1
 // this function assumes the file has already been opened for r/w ops
 int insertInodeBitmap(){
+    fseek(disk_img, superblock.i_bitmap_ptr, SEEK_SET);
+    for (int i = 0; i < superblock.num_inodes; i++){
+        // find open slot to flip bit to 1
+        int value;
+        if (fread(&value, sizeof(int), 1, disk_img) != 1){
+            printf("error reading inode bitmap\n");
+            return -1;
+        }
+        // is value's 1 bit set?
+        if (value % 2 == 0){
+            // valid place to insert
+            int one = 1;
+            fseek(disk_img, superblock.i_bitmap_ptr + (i * sizeof(int)), SEEK_SET);
+            if (fwrite(&one, sizeof(int), 1, disk_img) != 1){
+                printf("error writing to inode bitmap\n");
+                return -1;
+            }
+            return i;
+        }
+    }
     return -1;
 }
 // returns -1 on failure and the idx of the inserted idx on success
@@ -257,7 +277,7 @@ static int wfs_mkdir(const char* path, mode_t mode){
         disk_img = fopen(disk_path, "r+");
         // open file for r/w for bitmap ops and datablock/inode insert
         if (!disk_img){
-            printf("ERROR opening disk image in wfs_getattr\n");
+            printf("ERROR opening disk image in wfs_mkdir\n");
             return -1;
         }
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
