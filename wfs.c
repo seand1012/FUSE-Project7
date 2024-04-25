@@ -175,11 +175,13 @@ void printInodeBitmap(struct wfs_sb superblock){
 }
 // returns -1 on failure and the idx of the inserted idx on success
 // on success the idx this function returns should now be marked as 1
+// this function assumes the file has already been opened for r/w ops
 int insertInodeBitmap(){
     return -1;
 }
 // returns -1 on failure and the idx of the inserted idx on success
 // on success the idx this function returns should now be marked as 1
+// this function assumes the file has already been opened for r/w ops
 int insertDataBitmap(){
     return -1;
 }
@@ -251,6 +253,12 @@ static int wfs_mkdir(const char* path, mode_t mode){
         if (traversal(path, NULL) != -1){
             printf("%s path already exists\n", path);
             return -EEXIST;
+        }
+        disk_img = fopen(disk_path, "r+");
+        // open file for r/w for bitmap ops and datablock/inode insert
+        if (!disk_img){
+            printf("ERROR opening disk image in wfs_getattr\n");
+            return -1;
         }
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // is there space in our bitmaps?
