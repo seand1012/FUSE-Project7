@@ -310,6 +310,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
 static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
     printf("In wfs_mknod\n");
     int result = createTraversal(path);
+    struct wfs_inode new_inode;
     if (result == -1){
         printf("invalid path in wfs_mknod\n");
         return -ENOENT;
@@ -318,7 +319,8 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
         // check if second to last inode already has a child matching this node-to-insert
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // do we create data block?
-
+        printf("Parent inode: %i\n", result);
+        if(w)
     }
     return 0;
 }
