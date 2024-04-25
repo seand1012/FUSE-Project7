@@ -209,8 +209,16 @@ int insertDataBitmap(){
 // this function assumes inode ptr passed in is nonnull (fields are initialized) and performs the write to our disk_img
 // this function also assumes that our file is open for r/w ops
 int writeInode(struct wfs_inode* inode, int idx){
-    int offset = superblock.i_blocks_ptr + (idx * BLOCK_SIZE);
+    int offset = superblock.i_blocks_ptr + (idx * BLOCK_SIZE); // change BLOCK_SIZE to sizeof(struct wfs_inode)?
+    
+    fseek(disk_img, offset, SEEK_SET);
 
+    if(fwrite(inode, sizeof(struct wfs_inode), 1, disk_img) != 1){
+        printf("Error writing to inode\n");
+        return -1;
+    }
+    
+    return 0;
 }
 static int wfs_getattr(const char *path, struct stat *stbuf){
     printf("In wfs_getattr path: %s\n", path);
@@ -262,6 +270,7 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
         // check if second to last inode already has a child matching this node-to-insert
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // do we create data block?
+
     }
     return 0;
 }
