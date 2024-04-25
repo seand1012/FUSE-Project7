@@ -118,11 +118,6 @@ int traversal(const char* path, struct wfs_inode* buf){
 int createTraversal(const char* path){
     printf("In createTraversal\n");
     printf("Path: %s\n", path);
-    disk_img = fopen(disk_path, "r+");
-    if (!disk_img) {
-        printf("ERROR opening disk image in createTraversal\n");
-        return -1;
-    }
 
     // Copy path to manipulate
     char path_copy[strlen(path) + 1];
@@ -144,12 +139,10 @@ int createTraversal(const char* path){
     if (result == -1) {
         // Path doesn't exist up to second-to-last element
         printf("Path doesn't exist up to second-to-last element\n");
-        fclose(disk_img);
         return -1;
     }
     printf("Second-to-last node index: %d\n", result);
 
-    fclose(disk_img);
     printf("Exiting createTraversal\n");
     return result;
 }
@@ -222,10 +215,9 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
     if (result == -1){
         printf("invalid path in wfs_mknod\n");
         return -ENOENT;
-    }else if (result == -2) {
-        printf("error in wfs_mknod, file already exists\n");
-        return -EEXIST;
     }else{
+        // result should hold parent inode of node we are looking to insert
+        // check if second to last inode already has a child matching this node-to-insert
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // do we create data block?
     }
@@ -239,10 +231,9 @@ static int wfs_mkdir(const char* path, mode_t mode){
     if (result == -1){
         printf("invalid path in wfs_mkdir\n");
         return -ENOENT;
-    }else if (result == -2) {
-        printf("error in wfs_mkdir, directory already exists\n");
-        return -EEXIST;
     }else{
+        printf("second to last inode is: %d\n");
+        // check if second to last inode already has a child matching this node-to-insert
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // do we create data block?
     }
