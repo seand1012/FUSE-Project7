@@ -205,6 +205,13 @@ int insertInodeBitmap(){
 int insertDataBitmap(){
     return -1;
 }
+// this function will write a new inode given the inode to write and the idx it corresponds to in the ibitmap
+// this function assumes inode ptr passed in is nonnull (fields are initialized) and performs the write to our disk_img
+// this function also assumes that our file is open for r/w ops
+int writeInode(struct wfs_inode* inode, int idx){
+    int offset = superblock.i_blocks_ptr + (idx * BLOCK_SIZE);
+
+}
 static int wfs_getattr(const char *path, struct stat *stbuf){
     printf("In wfs_getattr path: %s\n", path);
     disk_img = fopen(disk_path, "r");
@@ -280,11 +287,23 @@ static int wfs_mkdir(const char* path, mode_t mode){
             printf("ERROR opening disk image in wfs_mkdir\n");
             return -1;
         }
-        // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // is there space in our bitmaps?
+        int inodeIdx = insertInodeBitmap();
+        if (inodeIdx == -1){
+            printf("error inserting into Inode bitmap\n");
+            // return -ENOSPC? or -1?
+            // if this fails, we shouldn't attempt the to insert databitmap or any of the logic that follows in this function
+        }
+        int dataIdx = insertDataBitmap();
+        if (dataIdx == -1){
+            printf("error inserting into data bitmap\n");
+            // return -ENOSPC?
+        }
+        // isnertion location of inode/datablock should match the idx of the bitmap -> 
+        // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
+        // create inode, update inode bitmap accordingly and parent inode to point to this inode
         // is there space for our new inode and datablock to be inserted?
         // new inode is of type directory, will have references to . and .. in datablock
-        // need to allocate both an inode and a datablock
     }
     return 0;
 }
