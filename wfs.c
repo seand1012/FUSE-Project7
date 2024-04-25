@@ -73,6 +73,11 @@ int traversal(const char* path, struct wfs_inode* buf){
 
     }
     printf("destination node: %s\n", prev);
+    int offset = superblock.i_blocks_ptr + (BLOCK_SIZE * currentNode);
+    fseek(disk_img, offset, SEEK_SET);
+    if(fread(&buf, sizeof(struct wfs_inode*), 1, disk_img) != 1){
+        printf("Failed to read into buf\n");
+    }
 
     return 0;
 }
@@ -117,7 +122,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         return -1;
     }
     printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
-    fclose(disk_img);
+    //fclose(disk_img);
     // need to fill in st_uid, st_gid, st_atime, st_mtime, st_mode, st_size
     struct wfs_inode destinationInode;
     memset(&destinationInode, 0, sizeof(struct wfs_inode));
