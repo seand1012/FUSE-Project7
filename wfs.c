@@ -50,7 +50,9 @@ int findChild(int parentInodeIdx, char* child){
     }
     return -1;
 }
-
+/*
+    traversal method for 
+*/
 int traversal(const char* path, struct wfs_inode* buf){
     printf("In traversal\n");
     printf("Path: %s\n", path);
@@ -88,25 +90,69 @@ int traversal(const char* path, struct wfs_inode* buf){
         fclose(disk_img);
         return -1;
     }
-    // copy from temp to buf
-    buf->atim = temp.atim;
-    for (int i = 0; i < N_BLOCKS; i++){
-        buf->blocks[i] = temp.blocks[i];
+    if (buf != NULL){
+        // copy from temp to buf
+        buf->atim = temp.atim;
+        for (int i = 0; i < N_BLOCKS; i++){
+            buf->blocks[i] = temp.blocks[i];
+        }
+        buf->ctim = temp.ctim;
+        buf->gid = temp.gid;
+        buf->mode = temp.mode;
+        buf->mtim = temp.mtim;
+        buf->nlinks = temp.nlinks;
+        buf->num = temp.num;
+        buf->size = temp.size;
+        buf->uid = temp.uid;
     }
-    buf->ctim = temp.ctim;
-    buf->gid = temp.gid;
-    buf->mode = temp.mode;
-    buf->mtim = temp.mtim;
-    buf->nlinks = temp.nlinks;
-    buf->num = temp.num;
-    buf->size = temp.size;
-    buf->uid = temp.uid;
 
     printf("exiting traversal\n");
     fclose(disk_img);
     return 0;
 }
+/*
+    traversal method for file exploration. last node doesn't exist and is the one we must create
+    will return the second to last inode in the path if the path is valid
+    returns -1 on failure
+*/
+int createTraversal(const char* path){
+    printf("In createTraversal\n");
+    printf("Path: %s\n", path);
+    disk_img = fopen(disk_path, "r+");
+    if (!disk_img) {
+        printf("ERROR opening disk image in createTraversal\n");
+        return -1;
+    }
 
+    // Copy path to manipulate
+    char path_copy[strlen(path) + 1];
+    strcpy(path_copy, path);
+
+    // Find the last '/' in the path
+    char* lastSlash = strrchr(path_copy, '/');
+    if (!lastSlash) {
+        printf("Invalid path format\n");
+        fclose(disk_img);
+        return -1;
+    }
+
+    // Eliminate the last node in the path
+    *lastSlash = '\0';
+
+    // Call the traversal method with the modified path
+    int result = traversal(path_copy, NULL);
+    if (result == -1) {
+        // Path doesn't exist up to second-to-last element
+        printf("Path doesn't exist up to second-to-last element\n");
+        fclose(disk_img);
+        return -1;
+    }
+    printf("Second-to-last node index: %d\n", result);
+
+    fclose(disk_img);
+    printf("Exiting createTraversal\n");
+    return result;
+}
 void printDataBitmap(struct wfs_sb superblock){
     fseek(disk_img, superblock.d_bitmap_ptr, SEEK_SET);
     for (int i = 0; i < superblock.num_data_blocks; i++){
@@ -170,14 +216,36 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
 }
 
 // creating a file
-static int wfs_mknod(){
+static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
     printf("In wfs_mknod\n");
+    int result = createTraversal(path);
+    if (result == -1){
+        printf("invalid path in wfs_mknod\n");
+        return -ENOENT;
+    }else if (result == -2) {
+        printf("error in wfs_mknod, file already exists\n");
+        return -EEXIST;
+    }else{
+        // create inode, update inode bitmap accordingly and parent inode to point to this inode
+        // do we create data block?
+    }
     return 0;
 }
 
 // creating a directory
-static int wfs_mkdir(){
+static int wfs_mkdir(const char* path, mode_t mode){
     printf("In wfs_mkdir\n");
+    int result = createTraversal(path);
+    if (result == -1){
+        printf("invalid path in wfs_mkdir\n");
+        return -ENOENT;
+    }else if (result == -2) {
+        printf("error in wfs_mkdir, directory already exists\n");
+        return -EEXIST;
+    }else{
+        // create inode, update inode bitmap accordingly and parent inode to point to this inode
+        // do we create data block?
+    }
     return 0;
 }
 
