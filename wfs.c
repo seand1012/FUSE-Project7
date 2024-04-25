@@ -54,6 +54,7 @@ int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
 int traversal(const char* path, struct wfs_inode* buf){
     printf("In traversal\n");
     printf("Path: %s\n", path);
+
     char path_copy[strlen(path) + 1];
     strcpy(path_copy, path);
 
@@ -63,7 +64,7 @@ int traversal(const char* path, struct wfs_inode* buf){
     printf("About to enter while loop\n");
     while(token != NULL){
         // tok_path[i] = token;
-        printf("%s", token);
+        printf("%s\n", token);
         token = strtok(NULL, "/");
     }
     // printf("%s\n", *tok_path);
@@ -96,7 +97,7 @@ void printInodeBitmap(struct wfs_sb superblock){
     }
 }
 static int wfs_getattr(const char *path, struct stat *stbuf){
-    printf("In wfs_getattr\n");
+    printf("In wfs_getattr path: %s\n", path);
     disk_img = fopen(disk_path, "r");
     // print contents of superblock - should be at offset 0
     if (!disk_img){
