@@ -173,6 +173,16 @@ void printInodeBitmap(struct wfs_sb superblock){
         printf("inode %d in bitmap: %d\n", i, ibm_value);
     }
 }
+// returns -1 on failure and the idx of the inserted idx on success
+// on success the idx this function returns should now be marked as 1
+int insertInodeBitmap(){
+    return -1;
+}
+// returns -1 on failure and the idx of the inserted idx on success
+// on success the idx this function returns should now be marked as 1
+int insertDataBitmap(){
+    return -1;
+}
 static int wfs_getattr(const char *path, struct stat *stbuf){
     printf("In wfs_getattr path: %s\n", path);
     disk_img = fopen(disk_path, "r");
@@ -237,7 +247,14 @@ static int wfs_mkdir(const char* path, mode_t mode){
     }else{
         printf("second to last inode is: %d\n", result);
         // check if second to last inode already has a child matching this node-to-insert
+        // could just call traversal again on the non-mutated path, if succesful, then file/dir already exists, return failure
+        if (traversal(path, NULL) != -1){
+            printf("%s path already exists\n", path);
+            return -EEXIST;
+        }
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
+        // is there space in our bitmaps?
+        // is there space for our new inode and datablock to be inserted?
         // new inode is of type directory, will have references to . and .. in datablock
         // need to allocate both an inode and a datablock
     }
