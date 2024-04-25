@@ -401,12 +401,14 @@ static int wfs_mkdir(const char* path, mode_t mode){
         for (i = 0 ; i < curNameLength; i++){
             cur.name[i] = curName[i];
         }
+        cur.num = inodeIdx;
         struct wfs_dentry parent; // .. 
         char* parentName = "..";
         int parentNameLength = strlen(parentName);
         for (i = 0 ; i < parentNameLength; i++){
             parent.name[i] = parentName[i];
         }
+        parent.num = result; // parent is what we got from initial call to create traversal
         
         // should we clear the contents from offset to offset+BlockSize to remove garbage data?
         int offset = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
