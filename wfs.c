@@ -211,7 +211,7 @@ int removeInodeBitmap(int idx){
         return -1;
     }else{
         if (value % 2 == 0){
-            printf("index: %d of inode bitmap is already 0\n");
+            printf("index: %d of inode bitmap is already 0\n", idx);
             return -1;
         }
         int zero = 0;
@@ -237,17 +237,17 @@ int removeDataBitmap(int idx){
     fseek(disk_img, offset, SEEK_SET);
     int value;
     if (fread(&value, sizeof(int), 1, disk_img) != 1){
-        printf("error reading inode bitmap\n");
+        printf("error reading data bitmap\n");
         return -1;
     }else{
         if (value % 2 == 0){
-            printf("index: %d of inode bitmap is already 0\n");
+            printf("index: %d of data bitmap is already 0\n", idx);
             return -1;
         }
         int zero = 0;
         fseek(disk_img, offset, SEEK_SET);
         if (fwrite(&zero, sizeof(int), 1, disk_img) != 1){
-            printf("error removing from inode bitmap\n");
+            printf("error removing from data bitmap\n");
             return -1;
         }
         return 0;
