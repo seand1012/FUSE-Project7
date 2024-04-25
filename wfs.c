@@ -359,8 +359,50 @@ static int wfs_mkdir(const char* path, mode_t mode){
         // isnertion location of inode/datablock should match the idx of the bitmap -> 
         // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
-        // is there space for our new inode and datablock to be inserted?
+        struct wfs_inode inode;
+        inode.atim = 0;
+        for (int i = 0; i < N_BLOCKS; i++){
+            inode.blocks[i] = 0;
+        }
+        inode.ctim = 0;
+        inode.gid = 0;
+        inode.mode = mode;
+        inode.mtim = 0;
+        inode.nlinks = 0;
+        inode.num = inodeIdx;
+        inode.size = 0; // ? not sure what this should be initalized to
+        inode.uid = 0;
+        if (writeInode(&inode, inodeIdx) == -1){
+            printf("failed to write inode in mkdir\n");
+            return -1;
+        }
         // new inode is of type directory, will have references to . and .. in datablock
+        // allocate datablock and dentrys
+        struct wfs_dentry cur; // .
+        char* curName = ".";
+        int i;
+        int curNameLength = strlen(curName);
+        for (i = 0 ; i < curNameLength; i++){
+            cur.name[i] = curName[i];
+        }
+        struct wfs_dentry parent; // .. 
+        char* parentName = "..";
+        int parentNameLength = strlen(parentName);
+        for (i = 0 ; i < parentNameLength; i++){
+            parent.name[i] = parentName[i];
+        }
+        
+        // should we clear the contents from offset to offset+BlockSize to remove garbage data?
+        int offset = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
+        fseek(disk_img, offset, SEEK_SET);
+        if (fwrite(&cur, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+            printf("error writing dentry to datablock\n");
+            return -1;
+        }
+        if (fwrite(&parent, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+            printf("error writing dentry to datablock\n");
+            return -1;
+        }
     }
     return 0;
 }
