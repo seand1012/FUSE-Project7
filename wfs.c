@@ -17,7 +17,7 @@ struct wfs_sb superblock;
     this function assumes disk_img is an open file
     returns the num associated with this child or -1 if none is found (num will point to the idx in the inode bitmap)
 */
-int findChild(int parentInodeIdx, char* child, struct wfs_sb superblock){
+int findChild(int parentInodeIdx, char* child){
     // find inode
     struct wfs_inode parentDirectoryInode;
     fseek(disk_img, superblock.i_blocks_ptr + (parentInodeIdx * BLOCK_SIZE), SEEK_SET);
@@ -59,15 +59,20 @@ int traversal(const char* path, struct wfs_inode* buf){
     strcpy(path_copy, path);
 
     char* token = strtok(path_copy, "/");
-    // char *tok_path[256];
-    //int i = 0;
-    printf("About to enter while loop\n");
+    char* prev = NULL;
+    int currentNode = 0;
     while(token != NULL){
-        // tok_path[i] = token;
+        currentNode = findChild(currentNode, token);
+        if (currentNode == -1){
+            printf("path doesn't exist\n");
+            return -1;
+        }
         printf("%s\n", token);
+        prev = token;
         token = strtok(NULL, "/");
+
     }
-    // printf("%s\n", *tok_path);
+    printf("destination node: %s\n", prev);
 
     return 0;
 }
