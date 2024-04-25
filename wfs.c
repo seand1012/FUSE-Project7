@@ -199,11 +199,59 @@ int insertInodeBitmap(){
     }
     return -1;
 }
+// removes "idx" index from inode bitmap (sets it to 0)
+// returns 0 on success and -1 on failure
+// assumes the disk_img file is open for writing
+int removeInodeBitmap(int idx){
+    int offset = superblock.i_bitmap_ptr + (idx *sizeof(int));
+    fseek(disk_img, offset, SEEK_SET);
+    int value;
+    if (fread(&value, sizeof(int), 1, disk_img) != 1){
+        printf("error reading inode bitmap\n");
+        return -1;
+    }else{
+        if (value % 2 == 0){
+            printf("index: %d of inode bitmap is already 0\n");
+            return -1;
+        }
+        int zero = 0;
+        fseek(disk_img, offset, SEEK_SET);
+        if (fwrite(&zero, sizeof(int), 1, disk_img) != 1){
+            printf("error removing from inode bitmap\n");
+            return -1;
+        }
+        return 0;
+    }
+}
 // returns -1 on failure and the idx of the inserted idx on success
 // on success the idx this function returns should now be marked as 1
 // this function assumes the file has already been opened for r/w ops
 int insertDataBitmap(){
     return -1;
+}
+// removes "idx" index from inode bitmap (sets it to 0)
+// returns 0 on success and -1 on failure
+// assumes the disk_img file is open for writing
+int removeDataBitmap(int idx){
+    int offset = superblock.d_bitmap_ptr + (idx *sizeof(int));
+    fseek(disk_img, offset, SEEK_SET);
+    int value;
+    if (fread(&value, sizeof(int), 1, disk_img) != 1){
+        printf("error reading inode bitmap\n");
+        return -1;
+    }else{
+        if (value % 2 == 0){
+            printf("index: %d of inode bitmap is already 0\n");
+            return -1;
+        }
+        int zero = 0;
+        fseek(disk_img, offset, SEEK_SET);
+        if (fwrite(&zero, sizeof(int), 1, disk_img) != 1){
+            printf("error removing from inode bitmap\n");
+            return -1;
+        }
+        return 0;
+    }
 }
 // this function will write a new inode given the inode to write and the idx it corresponds to in the ibitmap
 // this function assumes inode ptr passed in is nonnull (fields are initialized) and performs the write to our disk_img
