@@ -54,6 +54,12 @@ int findChild(int parentInodeIdx, char* child){
 int traversal(const char* path, struct wfs_inode* buf){
     printf("In traversal\n");
     printf("Path: %s\n", path);
+    disk_img = fopen(disk_path, "r");
+    // print contents of superblock - should be at offset 0
+    if (!disk_img){
+        printf("ERROR opening disk image in wfs_getattr\n");
+        return -1;
+    }
 
     char path_copy[strlen(path) + 1];
     strcpy(path_copy, path);
@@ -65,6 +71,7 @@ int traversal(const char* path, struct wfs_inode* buf){
         currentNode = findChild(currentNode, token);
         if (currentNode == -1){
             printf("path doesn't exist\n");
+            fclose(disk_img);
             return -1;
         }
         printf("%s\n", token);
@@ -75,10 +82,28 @@ int traversal(const char* path, struct wfs_inode* buf){
     printf("destination node: %s\n", prev);
     int offset = superblock.i_blocks_ptr + (BLOCK_SIZE * currentNode);
     fseek(disk_img, offset, SEEK_SET);
-    if(fread(&buf, sizeof(struct wfs_inode*), 1, disk_img) != 1){
+    struct wfs_inode temp;
+    if(fread(&temp, sizeof(struct wfs_inode), 1, disk_img) != 1){
         printf("Failed to read into buf\n");
+        fclose(disk_img);
+        return -1;
     }
+    // copy from temp to buf
+    buf->atim = temp.atim;
+    for (int i = 0; i < N_BLOCKS; i++){
+        buf->blocks[i] = temp.blocks[i];
+    }
+    buf->ctim = temp.ctim;
+    buf->gid = temp.gid;
+    buf->mode = temp.mode;
+    buf->mtim = temp.mtim;
+    buf->nlinks = temp.nlinks;
+    buf->num = temp.num;
+    buf->size = temp.size;
+    buf->uid = temp.uid;
 
+    printf("exiting traversal\n");
+    fclose(disk_img);
     return 0;
 }
 
@@ -122,15 +147,17 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         return -1;
     }
     printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
-    //fclose(disk_img);
+    fclose(disk_img);
     // need to fill in st_uid, st_gid, st_atime, st_mtime, st_mode, st_size
     struct wfs_inode destinationInode;
     memset(&destinationInode, 0, sizeof(struct wfs_inode));
     //printf("!! %s\n", path);
     int result = traversal(path, &destinationInode);
+
     if (result == -1){
         return -ENOENT;
     }else{
+        printf("copying into stbuf...\n");
         stbuf->st_uid = destinationInode.uid;
         stbuf->st_gid = destinationInode.gid;
         stbuf->st_atime = destinationInode.atim;
