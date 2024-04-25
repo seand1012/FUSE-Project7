@@ -127,13 +127,16 @@ int createTraversal(const char* path){
     char* lastSlash = strrchr(path_copy, '/');
     if (!lastSlash) {
         printf("Invalid path format\n");
-        fclose(disk_img);
         return -1;
     }
 
     // Eliminate the last node in the path
     *lastSlash = '\0';
 
+    if (*path_copy == '\0') { // if cutting out last node leaves us with blank string, pass in root as path
+        strcpy(path_copy, "/");
+    }
+    printf("path when cutting out last node: %s\n", path_copy);
     // Call the traversal method with the modified path
     int result = traversal(path_copy, NULL);
     if (result == -1) {
@@ -232,10 +235,11 @@ static int wfs_mkdir(const char* path, mode_t mode){
         printf("invalid path in wfs_mkdir\n");
         return -ENOENT;
     }else{
-        printf("second to last inode is: %d\n");
+        printf("second to last inode is: %d\n", result);
         // check if second to last inode already has a child matching this node-to-insert
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
-        // do we create data block?
+        // new inode is of type directory, will have references to . and .. in datablock
+        // need to allocate both an inode and a datablock
     }
     return 0;
 }
