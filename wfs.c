@@ -168,12 +168,12 @@ void printDataBitmap(struct wfs_sb superblock){
      for (int i = 0; i < (superblock.num_data_blocks / 32); i++){
         unsigned int dbm;
         if (fread(&dbm, sizeof(unsigned int), 1, disk_img) != 1){
-            printf("error reading inode bitmap\n");
+            printf("error reading data bitmap\n");
             fclose(disk_img);
             break;
         }
         for (int j = 0; j < 32; j++){
-            printf("inode %d in bitmap: %d\n", (i*32) + j, getBitValue(&dbm, j));
+            printf("datablock %d in bitmap: %d\n", (i*32) + j, getBitValue(&dbm, j));
         } 
     }
 }
