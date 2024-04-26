@@ -11,7 +11,21 @@
 FILE* disk_img;
 char* disk_path;
 struct wfs_sb superblock;
+/*
+    bit operation helper functions
+*/
+// 1U is unsigned int
+void setBit(unsigned int* bitmap, int pos) {
+    *bitmap |= (1U << pos);
+}
 
+void clearBit(unsigned int* bitmap, int pos) {
+    *bitmap &= (1U << pos);
+}
+
+int getBitValue(unsigned int* bitmap, int pos) {
+    return (*bitmap >> pos) & 1U;
+}
 /*
     helper method that will search for and return the inode idx of the child we are looking for in a directory
     this function assumes disk_img is an open file
@@ -151,26 +165,30 @@ int createTraversal(const char* path){
 }
 void printDataBitmap(struct wfs_sb superblock){
     fseek(disk_img, superblock.d_bitmap_ptr, SEEK_SET);
-    for (int i = 0; i < superblock.num_data_blocks; i++){
-        int dbm_value;
-        if (fread(&dbm_value, sizeof(int), 1, disk_img) != 1){
+     for (int i = 0; i < (superblock.num_data_blocks / 32); i++){
+        unsigned int dbm;
+        if (fread(&dbm, sizeof(unsigned int), 1, disk_img) != 1){
             printf("error reading inode bitmap\n");
             fclose(disk_img);
             break;
         }
-        printf("datablock %d in bitmap: %d\n", i, dbm_value);
+        for (int j = 0; j < 32; j++){
+            printf("inode %d in bitmap: %d\n", (i*32) + j, getBitValue(&dbm, j));
+        } 
     }
 }
 void printInodeBitmap(struct wfs_sb superblock){
     fseek(disk_img, superblock.i_bitmap_ptr, SEEK_SET);
-    for (int i = 0; i < superblock.num_inodes; i++){
-        int ibm_value;
-        if (fread(&ibm_value, sizeof(int), 1, disk_img) != 1){
+    for (int i = 0; i < (superblock.num_inodes / 32); i++){
+        unsigned int ibm;
+        if (fread(&ibm, sizeof(unsigned int), 1, disk_img) != 1){
             printf("error reading inode bitmap\n");
             fclose(disk_img);
             break;
         }
-        printf("inode %d in bitmap: %d\n", i, ibm_value);
+        for (int j = 0; j < 32; j++){
+            printf("inode %d in bitmap: %d\n", (i*32) + j, getBitValue(&ibm, j));
+        } 
     }
 }
 // returns -1 on failure and the idx of the inserted idx on success
@@ -178,23 +196,27 @@ void printInodeBitmap(struct wfs_sb superblock){
 // this function assumes the file has already been opened for r/w ops
 int insertInodeBitmap(){
     fseek(disk_img, superblock.i_bitmap_ptr, SEEK_SET);
-    for (int i = 0; i < superblock.num_inodes; i++){
+    for (int i = 0; i < (superblock.num_inodes / 32); i++){
         // find open slot to flip bit to 1
-        int value;
-        if (fread(&value, sizeof(int), 1, disk_img) != 1){
+        unsigned int ibm;
+        if (fread(&ibm, sizeof(unsigned int), 1, disk_img) != 1){
             printf("error reading inode bitmap\n");
             return -1;
         }
         // is value's 1 bit set?
-        if (value % 2 == 0){
-            // valid place to insert
-            int one = 1;
-            fseek(disk_img, superblock.i_bitmap_ptr + (i * sizeof(int)), SEEK_SET);
-            if (fwrite(&one, sizeof(int), 1, disk_img) != 1){
-                printf("error writing to inode bitmap\n");
-                return -1;
+        for (int j = 0; j < 32; j++){
+            // check all 32 bits of this unsigned int
+            int value = getBitValue(&ibm, j);
+            if (value % 2 == 0){
+                // valid place to insert
+                setBit(&ibm, j); // set the jth bit to 1
+                fseek(disk_img, superblock.i_bitmap_ptr + (i * sizeof(unsigned int)), SEEK_SET);
+                if (fwrite(&ibm, sizeof(int), 1, disk_img) != 1){
+                    printf("error writing to inode bitmap\n");
+                    return -1;
+                }
+                return (i*32) + j;
             }
-            return i;
         }
     }
     return -1;
@@ -203,55 +225,79 @@ int insertInodeBitmap(){
 // returns 0 on success and -1 on failure
 // assumes the disk_img file is open for writing
 int removeInodeBitmap(int idx){
-    int offset = superblock.i_bitmap_ptr + (idx *sizeof(int));
+    int offset = superblock.i_bitmap_ptr + ((idx/32) *sizeof(unsigned int));
+    int bitPosition = idx % 32; // offset finds which unsigned int holds our idx, bitPosition is the bit within this unsigned int that we want to mutate
     fseek(disk_img, offset, SEEK_SET);
-    int value;
-    if (fread(&value, sizeof(int), 1, disk_img) != 1){
+    unsigned int ibm;
+    if (fread(&ibm, sizeof(unsigned int), 1, disk_img) != 1){
         printf("error reading inode bitmap\n");
         return -1;
-    }else{
-        if (value % 2 == 0){
-            printf("index: %d of inode bitmap is already 0\n", idx);
-            return -1;
-        }
-        int zero = 0;
-        fseek(disk_img, offset, SEEK_SET);
-        if (fwrite(&zero, sizeof(int), 1, disk_img) != 1){
-            printf("error removing from inode bitmap\n");
-            return -1;
-        }
-        return 0;
     }
+    if (getBitValue(&ibm, bitPosition) % 2 == 0){
+        printf("index: %d of inode bitmap is already 0\n", idx);
+        return -1;
+    }
+    clearBit(&ibm, bitPosition);
+    fseek(disk_img, offset, SEEK_SET);
+    if (fwrite(&ibm, sizeof(unsigned int), 1, disk_img) != 1){
+        printf("error removing from inode bitmap\n");
+        return -1;
+    }
+    return 0;
 }
 // returns -1 on failure and the idx of the inserted idx on success
 // on success the idx this function returns should now be marked as 1
 // this function assumes the file has already been opened for r/w ops
 int insertDataBitmap(){
+    fseek(disk_img, superblock.d_bitmap_ptr, SEEK_SET);
+    for (int i = 0; i < (superblock.num_data_blocks / 32); i++){
+        // find open slot to flip bit to 1
+        unsigned int dbm;
+        if (fread(&dbm, sizeof(unsigned int), 1, disk_img) != 1){
+            printf("error reading inode bitmap\n");
+            return -1;
+        }
+        // is value's 1 bit set?
+        for (int j = 0; j < 32; j++){
+            // check all 32 bits of this unsigned int
+            int value = getBitValue(&dbm, j);
+            if (value % 2 == 0){
+                // valid place to insert
+                setBit(&dbm, j); // set the jth bit to 1
+                fseek(disk_img, superblock.d_bitmap_ptr + (i * sizeof(unsigned int)), SEEK_SET);
+                if (fwrite(&dbm, sizeof(int), 1, disk_img) != 1){
+                    printf("error writing to inode bitmap\n");
+                    return -1;
+                }
+                return (i*32) + j;
+            }
+        }
+    }
     return -1;
 }
 // removes "idx" index from inode bitmap (sets it to 0)
 // returns 0 on success and -1 on failure
 // assumes the disk_img file is open for writing
 int removeDataBitmap(int idx){
-    int offset = superblock.d_bitmap_ptr + (idx *sizeof(int));
+    int offset = superblock.d_bitmap_ptr + ((idx/32) *sizeof(unsigned int));
+    int bitPosition = idx % 32; // offset finds which unsigned int holds our idx, bitPosition is the bit within this unsigned int that we want to mutate
     fseek(disk_img, offset, SEEK_SET);
-    int value;
-    if (fread(&value, sizeof(int), 1, disk_img) != 1){
-        printf("error reading data bitmap\n");
+    unsigned int dbm;
+    if (fread(&dbm, sizeof(unsigned int), 1, disk_img) != 1){
+        printf("error reading inode bitmap\n");
         return -1;
-    }else{
-        if (value % 2 == 0){
-            printf("index: %d of data bitmap is already 0\n", idx);
-            return -1;
-        }
-        int zero = 0;
-        fseek(disk_img, offset, SEEK_SET);
-        if (fwrite(&zero, sizeof(int), 1, disk_img) != 1){
-            printf("error removing from data bitmap\n");
-            return -1;
-        }
-        return 0;
     }
+    if (getBitValue(&dbm, bitPosition) % 2 == 0){
+        printf("index: %d of inode bitmap is already 0\n", idx);
+        return -1;
+    }
+    clearBit(&dbm, bitPosition);
+    fseek(disk_img, offset, SEEK_SET);
+    if (fwrite(&dbm, sizeof(unsigned int), 1, disk_img) != 1){
+        printf("error removing from inode bitmap\n");
+        return -1;
+    }
+    return 0;
 }
 // this function will write a new inode given the inode to write and the idx it corresponds to in the ibitmap
 // this function assumes inode ptr passed in is nonnull (fields are initialized) and performs the write to our disk_img
