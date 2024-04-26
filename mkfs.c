@@ -36,6 +36,7 @@ int main(int argc, char* argv[]){
         }
     } 
     
+    
     if(num_datablocks % 32 != 0){
         num_datablocks = (int) floor((double)(num_datablocks / 32));
         num_datablocks++;
@@ -54,11 +55,19 @@ int main(int argc, char* argv[]){
    
     int start_sb = 0;
     int start_ibm = start_sb + sizeof(struct wfs_sb); // inode bitmap
+    printf("Start ibm: %d\n", start_ibm);
     int len_ibm = num_inodes * sizeof(int);
-    int start_dbm =  start_ibm + len_ibm; // data bitmap
-    int len_dbm = num_datablocks + sizeof(int);
+    printf("Length of ibm: %d\n", len_ibm);
+    //int start_dbm =  start_ibm + len_ibm; // data bitmap
+    int start_dbm = start_ibm + sizeof(int);
+    printf("Start dbm: %d\n", start_dbm);
+    //int len_dbm = num_datablocks + sizeof(int); // changed to * instead of +
+    int len_dbm = num_datablocks / 8;
+    printf("Length of data bitmap: %d\n", len_dbm);
     int start_inodes = start_dbm + len_dbm;
+    printf("Start inodes: %d\n", start_inodes);
     int start_data = start_inodes + (num_inodes * BLOCK_SIZE);
+    printf("start data: %d\n", start_data);
     //int end_fs = start_data + (num_datablocks * BLOCK_SIZE);
 
     //in mkfs all we write to file is sb, empty bitmaps, and root inode?
@@ -85,6 +94,7 @@ int main(int argc, char* argv[]){
     super_block.num_data_blocks = num_datablocks;
     super_block.i_bitmap_ptr = start_ibm;
     super_block.d_bitmap_ptr = start_dbm;
+    printf("super_block.d_bitmap_ptr: %ld\n", super_block.d_bitmap_ptr);
     super_block.i_blocks_ptr = start_inodes;
     super_block.d_blocks_ptr = start_data;
     // write superblock to file
