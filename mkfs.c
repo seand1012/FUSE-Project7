@@ -7,7 +7,18 @@
 #include <math.h>
 
 FILE* fptr;
+// 1U is unsigned int
+void setBit(unsigned int* bitmap, int pos) {
+    *bitmap |= (1U << pos);
+}
 
+void clearBit(unsigned int* bitmap, int pos) {
+    *bitmap &= (1U << pos);
+}
+
+int getBitValue(unsigned int* bitmap, int pos) {
+    return (*bitmap >> pos) & 1U;
+}
 
 int main(int argc, char* argv[]){
     // can take -d -i and -b flags
@@ -56,13 +67,13 @@ int main(int argc, char* argv[]){
     int start_sb = 0;
     int start_ibm = start_sb + sizeof(struct wfs_sb); // inode bitmap
     printf("Start ibm: %d\n", start_ibm);
-    int len_ibm = num_inodes * sizeof(int);
+    int len_ibm = (num_inodes/32) * sizeof(unsigned int);
     printf("Length of ibm: %d\n", len_ibm);
     //int start_dbm =  start_ibm + len_ibm; // data bitmap
-    int start_dbm = start_ibm + sizeof(int);
+    int start_dbm = start_ibm + len_ibm;
     printf("Start dbm: %d\n", start_dbm);
     //int len_dbm = num_datablocks + sizeof(int); // changed to * instead of +
-    int len_dbm = num_datablocks / 8;
+    int len_dbm = (num_datablocks / 32) * sizeof(unsigned int);
     printf("Length of data bitmap: %d\n", len_dbm);
     int start_inodes = start_dbm + len_dbm;
     printf("Start inodes: %d\n", start_inodes);
@@ -105,8 +116,8 @@ int main(int argc, char* argv[]){
     
     // write inode bitmap to file
     fseek(fptr, start_ibm, SEEK_SET);
-    int zero = 0;
-    for (int i = 0; i < num_inodes; i++){
+    unsigned int zero = 0;
+    for (int i = 0; i < (num_inodes/32); i++){
         if (fwrite(&zero, sizeof(int), 1, fptr) != 1){
             printf("error copying inode bitmap to file\n");
         }
@@ -114,7 +125,7 @@ int main(int argc, char* argv[]){
 
     // write data bitmap to file
     fseek(fptr, start_dbm, SEEK_SET);
-    for (int i = 0; i < num_datablocks; i++){
+    for (int i = 0; i < (num_datablocks/32); i++){
         if (fwrite(&zero, sizeof(int), 1, fptr) != 1){
             printf("error copying inode bitmap to file\n");
         }
@@ -142,8 +153,8 @@ int main(int argc, char* argv[]){
     }
 
     fseek(fptr, start_ibm, SEEK_SET);
-    int one = 1;
-    if (fwrite(&one, sizeof(int), 1, fptr) != 1){
+    setBit(&zero, 0);
+    if (fwrite(&zero, sizeof(int), 1, fptr) != 1){
         printf("error writing to 0th index of inode bitmap\n");
     }
 
@@ -163,7 +174,8 @@ int main(int argc, char* argv[]){
     }
     
     fseek(fptr, start_dbm, SEEK_SET);
-    if(fwrite(&one, sizeof(int), 1, fptr) != 1){
+    setBit(&zero, 0);
+    if(fwrite(&zero, sizeof(int), 1, fptr) != 1){
         printf("error writing to bitmap");
     }
 
