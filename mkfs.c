@@ -68,13 +68,13 @@ int main(int argc, char* argv[]){
     int start_ibm = start_sb + sizeof(struct wfs_sb); // inode bitmap
     printf("Start ibm: %d\n", start_ibm);
     int len_ibm = (num_inodes/32) * sizeof(unsigned int);
-    printf("Length of ibm: %d\n", len_ibm);
+    printf("Length of ibm: %d bytes, bits: %d\n", len_ibm, len_ibm*8);
     //int start_dbm =  start_ibm + len_ibm; // data bitmap
     int start_dbm = start_ibm + len_ibm;
     printf("Start dbm: %d\n", start_dbm);
     //int len_dbm = num_datablocks + sizeof(int); // changed to * instead of +
     int len_dbm = (num_datablocks / 32) * sizeof(unsigned int);
-    printf("Length of data bitmap: %d\n", len_dbm);
+    printf("Length of data bitmap: %d bytes, bits: %d\n", len_dbm, len_dbm*8);
     int start_inodes = start_dbm + len_dbm;
     printf("Start inodes: %d\n", start_inodes);
     int start_data = start_inodes + (num_inodes * BLOCK_SIZE);

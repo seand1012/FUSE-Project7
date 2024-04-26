@@ -315,7 +315,7 @@ int writeInode(struct wfs_inode* inode, int idx){
     return 0;
 }
 static int wfs_getattr(const char *path, struct stat *stbuf){
-    printf("In wfs_getattr path: %s\n", path);
+    printf("\nIn wfs_getattr path: %s\n", path);
     disk_img = fopen(disk_path, "r");
     // print contents of superblock - should be at offset 0
     if (!disk_img){
@@ -348,7 +348,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         stbuf->st_mode = destinationInode.mode;
         stbuf->st_size = destinationInode.size;
     }
-    printf("exiting wfs_getattr\n");
+    printf("exiting wfs_getattr\n\n");
     return 0;
 }
 
@@ -387,7 +387,7 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
 
 // creating a directory
 static int wfs_mkdir(const char* path, mode_t mode){
-    printf("In wfs_mkdir\n");
+    printf("\nIn wfs_mkdir\n");
     int result = createTraversal(path);
     if (result == -1){
         printf("invalid path in wfs_mkdir\n");
@@ -413,11 +413,13 @@ static int wfs_mkdir(const char* path, mode_t mode){
             // return -ENOSPC? or -1?
             // if this fails, we shouldn't attempt the to insert databitmap or any of the logic that follows in this function
         }
+        printInodeBitmap(superblock);
         int dataIdx = insertDataBitmap();
         if (dataIdx == -1){
             printf("error inserting into data bitmap\n");
             // return -ENOSPC?
         }
+        printDataBitmap(superblock);
         // isnertion location of inode/datablock should match the idx of the bitmap -> 
         // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
         // create inode, update inode bitmap accordingly and parent inode to point to this inode
@@ -468,6 +470,7 @@ static int wfs_mkdir(const char* path, mode_t mode){
             return -1;
         }
     }
+    printf("exiting mkdir\n\n");
     return 0;
 }
 
