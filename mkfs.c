@@ -158,6 +158,20 @@ int main(int argc, char* argv[]){
         printf("error writing to 0th index of inode bitmap\n");
     }
 
+    // set datablock_start : (datablockstart + BLOCK_SIZE) to hold zero initially?
+    // Initialize a blank directory entry
+    struct wfs_dentry emptyDentry;
+    emptyDentry.num = -1; // Or any other invalid inode number
+    memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
+
+    // Fill the data block with empty directory entries
+    fseek(disk_img, start_data, SEEK_SET);
+    for (int i = 0; i < (BLOCK_SIZE / sizeof(struct wfs_dentry)); i++) {
+        if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+            printf("error writing empty directory entry to data block\n");
+            return -1;
+        }
+    }
     // init dentry in 0th datablock with "."
     struct wfs_dentry rootDataBlock;
     char* dot = ".";
