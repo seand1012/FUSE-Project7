@@ -384,11 +384,19 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
     }
     return 0;
 }
-
+/*
+    helper function for mkdir. inserts dentry into an Inode's datablock
+*/
+int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
+    // dentry will hold the inodeIdx and name of the directory we are inserting 
+    // will insert new dentry into this Inode's datablock(s) at first available slot
+    // if no space in datablock, attempt to allocate another one (add to bitmap) to create space
+}
 // creating a directory
 static int wfs_mkdir(const char* path, mode_t mode){
     printf("\nIn wfs_mkdir\n");
     int result = createTraversal(path);
+    // result will hold the inodeIdx of the second to last element
     if (result == -1){
         printf("invalid path in wfs_mkdir\n");
         return -ENOENT;
@@ -469,6 +477,10 @@ static int wfs_mkdir(const char* path, mode_t mode){
             printf("error writing dentry to datablock\n");
             return -1;
         }
+        // update parent dir to have dentry to this new dir we inserted
+        // dentry.name = last node in path
+        // dentry.num = inodeIdx
+
     }
     printf("exiting mkdir\n\n");
     return 0;
