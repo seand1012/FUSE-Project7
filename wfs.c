@@ -422,7 +422,7 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
                 if (currentDentry.num == -1){
                     // write at offset and return success
                     fseek(disk_img, offset, SEEK_SET);
-                    if (fwrite(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+                    if (fwrite(dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
                         printf("error writing new dentry to parent Inode\n");
                         return -1;
                     }
@@ -469,7 +469,7 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     }
     // insert our dentry into the 0th offset of this new block
     fseek(disk_img, offset, SEEK_SET);
-    if (fwrite(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+    if (fwrite(dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
         printf("error writing empty directory entry to data block\n");
         return -1;
     }
