@@ -162,7 +162,11 @@ int main(int argc, char* argv[]){
     // Initialize a blank directory entry
     struct wfs_dentry emptyDentry;
     emptyDentry.num = -1; // Or any other invalid inode number
+    char* blankName = "";
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
+    strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
+    emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
+
 
     // Fill the data block with empty directory entries
     fseek(fptr, start_data, SEEK_SET);
@@ -175,13 +179,12 @@ int main(int argc, char* argv[]){
     // init dentry in 0th datablock with "."
     struct wfs_dentry rootDataBlock;
     char* dot = ".";
-    int i;
-    int dot_length = strlen(dot);
-    for (i = 0 ; i < dot_length; i++){
-        rootDataBlock.name[i] = dot[i];
-    }
-    rootDataBlock.name[i] = '\0';
+
+    memset(rootDataBlock.name, 0, sizeof(rootDataBlock.name)); // Initialize name with zeros
+    strncpy(rootDataBlock.name, dot, sizeof(rootDataBlock.name));
+    rootDataBlock.name[sizeof(rootDataBlock.name)] = '\0';
     rootDataBlock.num = rootInode.num;
+
     fseek(fptr, start_data, SEEK_SET);
     if(fwrite(&rootDataBlock, sizeof(struct wfs_dentry), 1, fptr) != 1){
         printf("error writing the directory entry");
