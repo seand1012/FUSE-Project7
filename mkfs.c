@@ -165,9 +165,9 @@ int main(int argc, char* argv[]){
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
 
     // Fill the data block with empty directory entries
-    fseek(disk_img, start_data, SEEK_SET);
+    fseek(fptr, start_data, SEEK_SET);
     for (int i = 0; i < (BLOCK_SIZE / sizeof(struct wfs_dentry)); i++) {
-        if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+        if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, fptr) != 1) {
             printf("error writing empty directory entry to data block\n");
             return -1;
         }
