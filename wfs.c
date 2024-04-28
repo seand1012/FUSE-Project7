@@ -59,6 +59,10 @@ int findChild(int parentInodeIdx, char* child){
             if (fread(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
                 printf("error looking through datablock\n");
             }
+            if (dentry.num == -1){
+                continue;
+            }
+            printf("parentInodeIdx: %d, dentry - num: %d name: %s, looking for: %s\n", parentInodeIdx, dentry.num, dentry.name, child);
             if (strcmp(dentry.name, child) == 0){
                 return dentry.num;
             }
@@ -446,8 +450,11 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     }
     // create new datablock, init with empty dentrys
     struct wfs_dentry emptyDentry;
-    emptyDentry.num = -1; // Or any other invalid inode number
+    char* blankName = "";
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
+    strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
+    emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
+
     int offset = superblock.d_blocks_ptr + (BLOCK_SIZE * dataBitmapIdx);
     // Fill the data block with empty directory entries
     fseek(disk_img, offset, SEEK_SET);
@@ -534,18 +541,18 @@ static int wfs_mkdir(const char* path, mode_t mode){
     // allocate datablock and dentrys
     struct wfs_dentry cur; // .
     char* curName = ".";
-    int i;
-    int curNameLength = strlen(curName);
-    for (i = 0 ; i < curNameLength; i++){
-        cur.name[i] = curName[i];
-    }
+
+    memset(cur.name, 0, sizeof(cur.name)); // Initialize name with zeros
+    strncpy(cur.name, curName, sizeof(cur.name));
+    cur.name[sizeof(cur.name)] = '\0';
     cur.num = inodeIdx;
+
     struct wfs_dentry parent; // .. 
     char* parentName = "..";
-    int parentNameLength = strlen(parentName);
-    for (i = 0 ; i < parentNameLength; i++){
-        parent.name[i] = parentName[i];
-    }
+    
+    memset(parent.name, 0, sizeof(parent.name)); // Initialize name with zeros
+    strncpy(parent.name, parentName, sizeof(parent.name));
+    parent.name[sizeof(parent.name)] = '\0';
     parent.num = result; // parent is what we got from initial call to create traversal
     
     int offset = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
@@ -553,6 +560,10 @@ static int wfs_mkdir(const char* path, mode_t mode){
     struct wfs_dentry emptyDentry;
     emptyDentry.num = -1; // Or any other invalid inode number
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
+    char* blankName = "";
+    strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
+    emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
+
     // Fill the data block with empty directory entries
     printf("init new datablock...\n");
     fseek(disk_img, offset, SEEK_SET);
@@ -593,6 +604,7 @@ static int wfs_mkdir(const char* path, mode_t mode){
     } else {
         destinationNode = strdup(lastSlash + 1); // Return a duplicate of the substring after the last slash
     }
+    memset(dentry.name, 0, sizeof(dentry.name)); // Initialize name with zeros
     strncpy(dentry.name, destinationNode, sizeof(dentry.name));
     free(destinationNode);
     dentry.name[sizeof(dentry.name) - 1] = '\0';
