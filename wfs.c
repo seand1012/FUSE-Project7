@@ -54,6 +54,7 @@ int findChild(int parentInodeIdx, char* child){
         // go through wfs_dentrys in this datablock
         for (int j = 0; j < (BLOCK_SIZE / sizeof(struct wfs_dentry)); j++){
             struct wfs_dentry dentry;
+            fseek(disk_img, datablock_offset + (j * sizeof(struct wfs_dentry)), SEEK_SET);
             if (fread(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
                 printf("error looking through datablock\n");
             }
@@ -498,16 +499,19 @@ static int wfs_mkdir(const char* path, mode_t mode){
     int inodeIdx = insertInodeBitmap();
     if (inodeIdx < 0){
         printf("error inserting into Inode bitmap\n");
+        fclose(disk_img);
         return inodeIdx;
         // if this fails, we shouldn't attempt the to insert databitmap or any of the logic that follows in this function
     }
-    printInodeBitmap(superblock);
+    // printInodeBitmap(superblock);
     int dataIdx = insertDataBitmap();
     if (dataIdx < 0){
         printf("error inserting into data bitmap\n");
+        fclose(disk_img);
         return dataIdx;
     }
-    printDataBitmap(superblock);
+    // printDataBitmap(superblock);
+    printf("inserted inode at %d and datanode at %d in bitmaps\n", inodeIdx, dataIdx);
     // isnertion location of inode/datablock should match the idx of the bitmap -> 
     // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
     // create inode, update inode bitmap accordingly and parent inode to point to this inode
@@ -549,26 +553,31 @@ static int wfs_mkdir(const char* path, mode_t mode){
     emptyDentry.num = -1; // Or any other invalid inode number
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
     // Fill the data block with empty directory entries
+    printf("init new datablock...\n");
     fseek(disk_img, offset, SEEK_SET);
     for (int i = 0; i < (BLOCK_SIZE / sizeof(struct wfs_dentry)); i++) {
         if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
             printf("error writing empty directory entry to data block\n");
+            fclose(disk_img);
             return -1;
         }
     }
     fseek(disk_img, offset, SEEK_SET);
     if (fwrite(&cur, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
         printf("error writing dentry to datablock\n");
+        fclose(disk_img);
         return -1;
     }
     if (fwrite(&parent, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
         printf("error writing dentry to datablock\n");
+        fclose(disk_img);
         return -1;
     }
     // write inode after writing datablock
     inode.blocks[0] = offset; // newinode should point to our new datablock
     if (writeInode(&inode, inodeIdx) == -1){
         printf("failed to write inode in mkdir\n");
+        fclose(disk_img);
         return -1;
     }
     // update parent dir to have dentry to this new dir we inserted
@@ -589,9 +598,11 @@ static int wfs_mkdir(const char* path, mode_t mode){
     dentry.name[sizeof(dentry.name) - 1] = '\0';
     int insertDentryResult = insertDentry(result, &dentry); // error check to ensure this doesn't fail
     if (insertDentryResult < 0){
+        fclose(disk_img);
         return insertDentryResult;
     }
     printf("exiting mkdir\n\n");
+    fclose(disk_img);
     return 0;
 }
 
