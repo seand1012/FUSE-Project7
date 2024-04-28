@@ -433,102 +433,102 @@ static int wfs_mkdir(const char* path, mode_t mode){
     if (result == -1){
         printf("invalid path in wfs_mkdir\n");
         return -ENOENT;
-    }else{
-        printf("second to last inode is: %d\n", result);
-        // check if second to last inode already has a child matching this node-to-insert
-        // could just call traversal again on the non-mutated path, if succesful, then file/dir already exists, return failure
-        if (traversal(path, NULL) != -1){
-            printf("%s path already exists\n", path);
-            return -EEXIST;
-        }
-        disk_img = fopen(disk_path, "r+");
-        // open file for r/w for bitmap ops and datablock/inode insert
-        if (!disk_img){
-            printf("ERROR opening disk image in wfs_mkdir\n");
-            return -1;
-        }
-        // is there space in our bitmaps?
-        int inodeIdx = insertInodeBitmap();
-        if (inodeIdx == -1){
-            printf("error inserting into Inode bitmap\n");
-            // return -ENOSPC? or -1?
-            // if this fails, we shouldn't attempt the to insert databitmap or any of the logic that follows in this function
-        }
-        printInodeBitmap(superblock);
-        int dataIdx = insertDataBitmap();
-        if (dataIdx == -1){
-            printf("error inserting into data bitmap\n");
-            // return -ENOSPC?
-        }
-        printDataBitmap(superblock);
-        // isnertion location of inode/datablock should match the idx of the bitmap -> 
-        // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
-        // create inode, update inode bitmap accordingly and parent inode to point to this inode
-        struct wfs_inode inode;
-        inode.atim = 0;
-        for (int i = 0; i < N_BLOCKS; i++){
-            inode.blocks[i] = 0;
-        }
-        inode.ctim = 0;
-        inode.gid = 0;
-        inode.mode = mode;
-        inode.mtim = 0;
-        inode.nlinks = 0;
-        inode.num = inodeIdx;
-        inode.size = 0; // ? not sure what this should be initalized to
-        inode.uid = 0;
-        if (writeInode(&inode, inodeIdx) == -1){
-            printf("failed to write inode in mkdir\n");
-            return -1;
-        }
-        // new inode is of type directory, will have references to . and .. in datablock
-        // allocate datablock and dentrys
-        struct wfs_dentry cur; // .
-        char* curName = ".";
-        int i;
-        int curNameLength = strlen(curName);
-        for (i = 0 ; i < curNameLength; i++){
-            cur.name[i] = curName[i];
-        }
-        cur.num = inodeIdx;
-        struct wfs_dentry parent; // .. 
-        char* parentName = "..";
-        int parentNameLength = strlen(parentName);
-        for (i = 0 ; i < parentNameLength; i++){
-            parent.name[i] = parentName[i];
-        }
-        parent.num = result; // parent is what we got from initial call to create traversal
-        
-        // should we clear the contents from offset to offset+BlockSize to remove garbage data?
-        int offset = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
-        fseek(disk_img, offset, SEEK_SET);
-        if (fwrite(&cur, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
-            printf("error writing dentry to datablock\n");
-            return -1;
-        }
-        if (fwrite(&parent, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
-            printf("error writing dentry to datablock\n");
-            return -1;
-        }
-        // update parent dir to have dentry to this new dir we inserted
-        // dentry.name = last node in path
-        // dentry.num = inodeIdx
-        struct wfs_dentry dentry;
-        dentry.num = inodeIdx;
-        // get name of node to insert (should be no slashes if /a is path need a, if /a/b, need b)
-        const char* lastSlash = strrchr(path, '/');
-        char* destinationNode;
-        if (lastSlash == NULL) {
-            destinationNode = strdup(path); // If no slash found, return a duplicate of the whole path
-        } else {
-            destinationNode = strdup(lastSlash + 1); // Return a duplicate of the substring after the last slash
-        }
-        strncpy(dentry.name, destinationNode, sizeof(dentry.name));
-        dentry.name[sizeof(dentry.name) - 1] = '\0';
-        insertDentry(result, &dentry); // error check to ensure this doesn't fail
-        free(destinationNode);
-
     }
+    printf("second to last inode is: %d\n", result);
+    // check if second to last inode already has a child matching this node-to-insert
+    // could just call traversal again on the non-mutated path, if succesful, then file/dir already exists, return failure
+    if (traversal(path, NULL) != -1){
+        printf("%s path already exists\n", path);
+        return -EEXIST;
+    }
+    disk_img = fopen(disk_path, "r+");
+    // open file for r/w for bitmap ops and datablock/inode insert
+    if (!disk_img){
+        printf("ERROR opening disk image in wfs_mkdir\n");
+        return -1;
+    }
+    // is there space in our bitmaps?
+    int inodeIdx = insertInodeBitmap();
+    if (inodeIdx == -1){
+        printf("error inserting into Inode bitmap\n");
+        // return -ENOSPC? or -1?
+        // if this fails, we shouldn't attempt the to insert databitmap or any of the logic that follows in this function
+    }
+    printInodeBitmap(superblock);
+    int dataIdx = insertDataBitmap();
+    if (dataIdx == -1){
+        printf("error inserting into data bitmap\n");
+        // return -ENOSPC?
+    }
+    printDataBitmap(superblock);
+    // isnertion location of inode/datablock should match the idx of the bitmap -> 
+    // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
+    // create inode, update inode bitmap accordingly and parent inode to point to this inode
+    struct wfs_inode inode;
+    inode.atim = 0;
+    for (int i = 0; i < N_BLOCKS; i++){
+        inode.blocks[i] = 0;
+    }
+    inode.ctim = 0;
+    inode.gid = 0;
+    inode.mode = mode;
+    inode.mtim = 0;
+    inode.nlinks = 0;
+    inode.num = inodeIdx;
+    inode.size = 0; // ? not sure what this should be initalized to
+    inode.uid = 0;
+    if (writeInode(&inode, inodeIdx) == -1){
+        printf("failed to write inode in mkdir\n");
+        return -1;
+    }
+    // new inode is of type directory, will have references to . and .. in datablock
+    // allocate datablock and dentrys
+    struct wfs_dentry cur; // .
+    char* curName = ".";
+    int i;
+    int curNameLength = strlen(curName);
+    for (i = 0 ; i < curNameLength; i++){
+        cur.name[i] = curName[i];
+    }
+    cur.num = inodeIdx;
+    struct wfs_dentry parent; // .. 
+    char* parentName = "..";
+    int parentNameLength = strlen(parentName);
+    for (i = 0 ; i < parentNameLength; i++){
+        parent.name[i] = parentName[i];
+    }
+    parent.num = result; // parent is what we got from initial call to create traversal
+    
+    // should we clear the contents from offset to offset+BlockSize to remove garbage data?
+    int offset = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
+    fseek(disk_img, offset, SEEK_SET);
+    if (fwrite(&cur, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+        printf("error writing dentry to datablock\n");
+        return -1;
+    }
+    if (fwrite(&parent, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+        printf("error writing dentry to datablock\n");
+        return -1;
+    }
+    // update parent dir to have dentry to this new dir we inserted
+    // dentry.name = last node in path
+    // dentry.num = inodeIdx
+    struct wfs_dentry dentry;
+    dentry.num = inodeIdx;
+    // get name of node to insert (should be no slashes if /a is path need a, if /a/b, need b)
+    const char* lastSlash = strrchr(path, '/');
+    char* destinationNode;
+    if (lastSlash == NULL) {
+        destinationNode = strdup(path); // If no slash found, return a duplicate of the whole path
+    } else {
+        destinationNode = strdup(lastSlash + 1); // Return a duplicate of the substring after the last slash
+    }
+    strncpy(dentry.name, destinationNode, sizeof(dentry.name));
+    dentry.name[sizeof(dentry.name) - 1] = '\0';
+    insertDentry(result, &dentry); // error check to ensure this doesn't fail
+    free(destinationNode);
+
+    
     printf("exiting mkdir\n\n");
     return 0;
 }
