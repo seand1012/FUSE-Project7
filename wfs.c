@@ -524,10 +524,7 @@ static int wfs_mkdir(const char* path, mode_t mode){
     inode.num = inodeIdx;
     inode.size = 0; // ? not sure what this should be initalized to
     inode.uid = 0;
-    if (writeInode(&inode, inodeIdx) == -1){
-        printf("failed to write inode in mkdir\n");
-        return -1;
-    }
+
     // new inode is of type directory, will have references to . and .. in datablock
     // allocate datablock and dentrys
     struct wfs_dentry cur; // .
@@ -546,8 +543,19 @@ static int wfs_mkdir(const char* path, mode_t mode){
     }
     parent.num = result; // parent is what we got from initial call to create traversal
     
-    // should we clear the contents from offset to offset+BlockSize to remove garbage data?
     int offset = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
+    // wipe datablock
+    struct wfs_dentry emptyDentry;
+    emptyDentry.num = -1; // Or any other invalid inode number
+    memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
+    // Fill the data block with empty directory entries
+    fseek(disk_img, offset, SEEK_SET);
+    for (int i = 0; i < (BLOCK_SIZE / sizeof(struct wfs_dentry)); i++) {
+        if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+            printf("error writing empty directory entry to data block\n");
+            return -1;
+        }
+    }
     fseek(disk_img, offset, SEEK_SET);
     if (fwrite(&cur, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
         printf("error writing dentry to datablock\n");
@@ -555,6 +563,12 @@ static int wfs_mkdir(const char* path, mode_t mode){
     }
     if (fwrite(&parent, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
         printf("error writing dentry to datablock\n");
+        return -1;
+    }
+    // write inode after writing datablock
+    inode.blocks[0] = offset; // newinode should point to our new datablock
+    if (writeInode(&inode, inodeIdx) == -1){
+        printf("failed to write inode in mkdir\n");
         return -1;
     }
     // update parent dir to have dentry to this new dir we inserted
