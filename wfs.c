@@ -130,7 +130,7 @@ int traversal(const char* path, struct wfs_inode* buf){
 
     printf("exiting traversal\n");
     fclose(disk_img);
-    return 0;
+    return currentNode;
 }
 /*
     traversal method for file exploration. last node doesn't exist and is the one we must create
