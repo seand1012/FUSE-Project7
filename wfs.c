@@ -220,7 +220,7 @@ int insertInodeBitmap(){
             }
         }
     }
-    return -1;
+    return -ENOSPC;
 }
 // removes "idx" index from inode bitmap (sets it to 0)
 // returns 0 on success and -1 on failure
@@ -274,6 +274,7 @@ int insertDataBitmap(){
             }
         }
     }
+    return -ENOSPC;
     return -ENOSPC;
 }
 // removes "idx" index from inode bitmap (sets it to 0)
@@ -373,14 +374,14 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
         new_inode.size = 0;
 
         new_inode_idx = insertInodeBitmap();
-        if(new_inode_idx == -1){
+        if(new_inode_idx < 0){
             printf("Failed getting inode index\n");
-            return -EIO;
+            return new_inode_idx;
         }
 
-        if(writeInode(&new_inode, new_inode_idx) == -1){
+        if(writeInode(&new_inode, new_inode_idx) < 0){
             printf("Failed to write inode\n");
-            return -EIO; // Return I/O error
+            return new_inode_idx; // Return I/O error
         }
     }
     return 0;
@@ -406,6 +407,7 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
                 int offset = parentInode.blocks[i] + (j * sizeof(struct wfs_dentry));
                 fseek(disk_img, offset, SEEK_SET);
                 if (fread(&currentDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
+                    printf("error reading dentry in datablock at %ld\n", parentInode.blocks[i]);
                     printf("error reading dentry in datablock at %ld\n", parentInode.blocks[i]);
                     return -1;
                 }
@@ -501,10 +503,9 @@ static int wfs_mkdir(const char* path, mode_t mode){
     }
     printInodeBitmap(superblock);
     int dataIdx = insertDataBitmap();
-    if (dataIdx < 0){ // what if above insert succeeds and this fails?
+    if (dataIdx < 0){
         printf("error inserting into data bitmap\n");
         return dataIdx;
-        // return -ENOSPC?
     }
     printDataBitmap(superblock);
     // isnertion location of inode/datablock should match the idx of the bitmap -> 
