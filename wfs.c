@@ -38,7 +38,7 @@ int findChild(int parentInodeIdx, char* child){
     fseek(disk_img, superblock.i_blocks_ptr + (parentInodeIdx * BLOCK_SIZE), SEEK_SET);
     if (fread(&parentDirectoryInode, sizeof(struct wfs_inode), 1, disk_img) != 1){
         printf("Error reading parentDirectoryInode from disk img\n");
-        fclose(disk_img);
+        // fclose(disk_img);
         return -1;
     }
     // is this parentnode a directory?
@@ -332,7 +332,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
         fclose(disk_img);
         return -1;
     }
-    printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
+    //printf("Superblock: num_inodes=%ld, num_data_blocks=%ld\n", superblock.num_inodes, superblock.num_data_blocks);
     fclose(disk_img);
     // need to fill in st_uid, st_gid, st_atime, st_mtime, st_mode, st_size
     struct wfs_inode destinationInode;
@@ -343,7 +343,7 @@ static int wfs_getattr(const char *path, struct stat *stbuf){
     if (result == -1){
         return -ENOENT;
     }else{
-        printf("copying into stbuf...\n");
+        // printf("copying into stbuf...\n");
         stbuf->st_uid = destinationInode.uid;
         stbuf->st_gid = destinationInode.gid;
         stbuf->st_atime = destinationInode.atim;
@@ -515,6 +515,7 @@ static int wfs_mkdir(const char* path, mode_t mode){
     // isnertion location of inode/datablock should match the idx of the bitmap -> 
     // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
     // create inode, update inode bitmap accordingly and parent inode to point to this inode
+    printf("mode: %d, S_IFDIR: %d\n", mode, S_IFDIR);
     struct wfs_inode inode;
     inode.atim = 0;
     for (int i = 0; i < N_BLOCKS; i++){
@@ -522,7 +523,7 @@ static int wfs_mkdir(const char* path, mode_t mode){
     }
     inode.ctim = 0;
     inode.gid = 0;
-    inode.mode = mode;
+    inode.mode = S_IFDIR; // mode or S_IFDIR
     inode.mtim = 0;
     inode.nlinks = 0;
     inode.num = inodeIdx;
@@ -580,9 +581,8 @@ static int wfs_mkdir(const char* path, mode_t mode){
         fclose(disk_img);
         return -1;
     }
+
     // update parent dir to have dentry to this new dir we inserted
-    // dentry.name = last node in path
-    // dentry.num = inodeIdx
     struct wfs_dentry dentry;
     dentry.num = inodeIdx;
     // get name of node to insert (should be no slashes if /a is path need a, if /a/b, need b)
