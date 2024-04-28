@@ -398,6 +398,7 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
 */
 int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     // dentry will hold the inodeIdx and name of the directory we are inserting 
+    printf("inserting dentry with num: %d name: %s at inode: %d\n", dentry->num, dentry->name, parentInodeIdx);
     struct wfs_inode parentInode;
     int parentInodeOffset = superblock.i_blocks_ptr + (parentInodeIdx * BLOCK_SIZE);
     fseek(disk_img, parentInodeOffset, SEEK_SET);
@@ -416,11 +417,12 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
                     printf("error reading dentry in datablock at %ld\n", parentInode.blocks[i]);
                     return -1;
                 }
+                printf("currentDentry: num: %d, name: %s, parent: %d\n", currentDentry.num, currentDentry.name, parentInodeIdx);
                 // is this dentry available?
                 if (currentDentry.num == -1){
                     // write at offset and return success
                     fseek(disk_img, offset, SEEK_SET);
-                    if (fwrite(dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+                    if (fwrite(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
                         printf("error writing new dentry to parent Inode\n");
                         return -1;
                     }
@@ -454,6 +456,7 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
     strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
     emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
+    emptyDentry.num = -1;
 
     int offset = superblock.d_blocks_ptr + (BLOCK_SIZE * dataBitmapIdx);
     // Fill the data block with empty directory entries
@@ -595,7 +598,6 @@ static int wfs_mkdir(const char* path, mode_t mode){
 
     // update parent dir to have dentry to this new dir we inserted
     struct wfs_dentry dentry;
-    dentry.num = inodeIdx;
     // get name of node to insert (should be no slashes if /a is path need a, if /a/b, need b)
     const char* lastSlash = strrchr(path, '/');
     char* destinationNode;
@@ -606,15 +608,17 @@ static int wfs_mkdir(const char* path, mode_t mode){
     }
     memset(dentry.name, 0, sizeof(dentry.name)); // Initialize name with zeros
     strncpy(dentry.name, destinationNode, sizeof(dentry.name));
-    free(destinationNode);
-    dentry.name[sizeof(dentry.name) - 1] = '\0';
+    dentry.name[sizeof(dentry.name)] = '\0';
+    dentry.num = inodeIdx;
     int insertDentryResult = insertDentry(result, &dentry); // error check to ensure this doesn't fail
     if (insertDentryResult < 0){
         fclose(disk_img);
+        free(destinationNode);
         return insertDentryResult;
     }
     printf("exiting mkdir\n\n");
     fclose(disk_img);
+    free(destinationNode);
     return 0;
 }
 
