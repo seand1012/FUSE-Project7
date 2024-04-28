@@ -601,6 +601,7 @@ static int wfs_mkdir(const char* path, mode_t mode){
         fclose(disk_img);
         return insertDentryResult;
     }
+    printf("dentry name: %s\n", dentry.name);
     printf("exiting mkdir\n\n");
     fclose(disk_img);
     return 0;
