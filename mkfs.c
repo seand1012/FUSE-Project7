@@ -146,7 +146,7 @@ int main(int argc, char* argv[]){
     for (int i = 0; i < N_BLOCKS; i++){
         rootInode.blocks[i] = 0;
     }
-
+    rootInode.blocks[0] = start_data;
     // TODO init field of inode?
     if (fwrite(&rootInode, sizeof(struct wfs_inode), 1, fptr) != 1) {
         printf("error copying root inode\n");
@@ -161,12 +161,12 @@ int main(int argc, char* argv[]){
     // set datablock_start : (datablockstart + BLOCK_SIZE) to hold zero initially?
     // Initialize a blank directory entry
     struct wfs_dentry emptyDentry;
-    emptyDentry.num = -1; // Or any other invalid inode number
+    
     char* blankName = "";
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
     strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
     emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
-
+    emptyDentry.num = -1; // Or any other invalid inode number
 
     // Fill the data block with empty directory entries
     fseek(fptr, start_data, SEEK_SET);
@@ -194,6 +194,19 @@ int main(int argc, char* argv[]){
     setBit(&zero, 0);
     if(fwrite(&zero, sizeof(int), 1, fptr) != 1){
         printf("error writing to bitmap");
+    }
+
+    fseek(fptr, start_data, SEEK_SET);
+    for (int j = 0; j < (BLOCK_SIZE / sizeof(struct wfs_dentry)); j++){
+        struct wfs_dentry dentry;
+        fseek(fptr, start_data + (j * sizeof(struct wfs_dentry)), SEEK_SET);
+        if (fread(&dentry, sizeof(struct wfs_dentry), 1, fptr) != 1){
+            printf("error looking through datablock\n");
+        }
+        // if (dentry.num == -1){
+        //     continue;
+        // }
+        printf("parentInodeIdx: %d, dentry - num: %d name: %s\n", 0, dentry.num, dentry.name);
     }
 
     fclose(fptr);
