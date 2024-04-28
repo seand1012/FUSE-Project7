@@ -281,6 +281,7 @@ int insertDataBitmap(){
             }
         }
     }
+    // TODO: create empty dentries in this new datablock
     return -ENOSPC;
 }
 // removes "idx" index from inode bitmap (sets it to 0)
@@ -406,7 +407,7 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
         printf("error reading parent directory inode\n");
         return -1;
     }
-
+    // TODO: lazy allocation: does a datablock exist for this inode? if not allocate it, then perform dentry insert
     struct wfs_dentry currentDentry;
     for (int i = 0; i < N_BLOCKS; i++){ // go through all valid datablocks associated with this inode
         if (parentInode.blocks[i] != 0){
@@ -485,6 +486,9 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
 }
 // creating a directory
 static int wfs_mkdir(const char* path, mode_t mode){
+    // notse: lazy allocation. also . and .. handled by fuse, dont need to worry aobut that ourselves
+    // TODO: only create datablock and assign datablock to inode when something needs to be written to datablock
+    // initially we shouldn't take up datablocks for an empty dir or file. should only allocate inode initially
     printf("\nIn wfs_mkdir\n");
     int result = createTraversal(path);
     // result will hold the inodeIdx of the second to last element
