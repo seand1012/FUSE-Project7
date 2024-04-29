@@ -4,6 +4,7 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 // parse the path
 // get to inode you need to be at
@@ -504,13 +505,13 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
         inode.blocks[i] = 0;
     }
     inode.ctim = 0;
-    inode.gid = 0;
-    inode.mode = 0; // mode or S_IFDIR
+    inode.gid = getgid();
+    inode.mode = S_IFREG; // mode or S_IFDIR
     inode.mtim = 0;
     inode.nlinks = 0;
     inode.num = inodeIdx;
     inode.size = 0; // ? not sure what this should be initalized to
-    inode.uid = 0;
+    inode.uid = getuid();
     
     if (writeInode(&inode, inodeIdx) == -1){
         printf("failed to write inode in mkdir\n");
@@ -588,13 +589,13 @@ static int wfs_mkdir(const char* path, mode_t mode){
         inode.blocks[i] = 0;
     }
     inode.ctim = 0;
-    inode.gid = 0;
+    inode.gid = getgid();
     inode.mode = S_IFDIR; // mode or S_IFDIR
     inode.mtim = 0;
     inode.nlinks = 0;
     inode.num = inodeIdx;
     inode.size = 0; // ? not sure what this should be initalized to
-    inode.uid = 0;
+    inode.uid = getuid();
 
     // new inode is of type directory, will have references to . and .. in datablock
     // allocate datablock and dentrys
