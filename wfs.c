@@ -539,6 +539,22 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
         free(destinationNode);
         return insertDentryResult;
     }
+     // update parent inode to have += 1 links?
+    int parentInodeOffset = superblock.i_blocks_ptr + (result * BLOCK_SIZE);
+    struct wfs_inode parentInode;
+    fseek(disk_img, parentInodeOffset, SEEK_SET);
+    if (fread(&parentInode, sizeof(struct wfs_inode), 1, disk_img) != 1) {
+        printf("error reading parentInode in mknod\n");
+        return -1;
+    }
+    // update parentInode and write back to file
+    parentInode.nlinks += 1;
+    fseek(disk_img, parentInodeOffset, SEEK_SET);
+    if (fwrite(&parentInode, sizeof(struct wfs_inode), 1, disk_img) != 1) {
+        printf("error writing parentInode in mknod\n");
+        return -1;
+    }
+    
     printf("dentry name: %s\n", dentry.name);
     printf("exiting mkdir\n\n");
     fclose(disk_img);
