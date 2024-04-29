@@ -253,6 +253,31 @@ int removeInodeBitmap(int idx){
     }
     return 0;
 }
+// initializes a datablock, if isDirectory == 1, init with empty dentry structs
+// returns offset to datablock on success and -1 on failure
+// TODO: check if there is space in the file for writing? there could be space in the bitmap but not space in the file so this method might need to detect that?
+int initDirectoryDatablock(int idx){
+    int offset = superblock.d_blocks_ptr + (idx * BLOCK_SIZE);
+    // wipe datablock
+    struct wfs_dentry emptyDentry;
+    emptyDentry.num = -1; // Or any other invalid inode number
+    memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
+    char* blankName = "";
+    strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
+    emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
+
+    // Fill the data block with empty directory entries
+    printf("init new datablock...\n");
+    fseek(disk_img, offset, SEEK_SET);
+    for (int i = 0; i < (BLOCK_SIZE / sizeof(struct wfs_dentry)); i++) {
+        if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+            printf("error writing empty directory entry to data block\n");
+            fclose(disk_img);
+            return -1;
+        }
+    }
+    return offset;
+}
 // returns -1 on failure and the idx of the inserted idx on success
 // on success the idx this function returns should now be marked as 1
 // this function assumes the file has already been opened for r/w ops
@@ -281,7 +306,6 @@ int insertDataBitmap(){
             }
         }
     }
-    // TODO: create empty dentries in this new datablock
     return -ENOSPC;
 }
 // removes "idx" index from inode bitmap (sets it to 0)
@@ -451,31 +475,21 @@ int insertDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     if (dataBitmapIdx < 0){
         return dataBitmapIdx;
     }
-    // create new datablock, init with empty dentrys
-    struct wfs_dentry emptyDentry;
-    char* blankName = "";
-    memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
-    strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
-    emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
-    emptyDentry.num = -1;
-
-    int offset = superblock.d_blocks_ptr + (BLOCK_SIZE * dataBitmapIdx);
-    // Fill the data block with empty directory entries
-    fseek(disk_img, offset, SEEK_SET);
-    for (int i = 0; i < (BLOCK_SIZE / sizeof(struct wfs_dentry)); i++) {
-        if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
-            printf("error writing empty directory entry to data block\n");
-            return -1;
-        }
+    // initialize a datablock for this new directory
+    int datablockOffset = initDirectoryDatablock(dataBitmapIdx);
+    if (datablockOffset < 0) {
+        printf("error initializing datablock for new directory\n");
+        return datablockOffset;
     }
+
     // insert our dentry into the 0th offset of this new block
-    fseek(disk_img, offset, SEEK_SET);
+    fseek(disk_img, datablockOffset, SEEK_SET);
     if (fwrite(dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
         printf("error writing empty directory entry to data block\n");
         return -1;
     }
     // update parentInode.blocks with offset to new datablock
-    parentInode.blocks[datablockOffsetIdx] = offset;
+    parentInode.blocks[datablockOffsetIdx] = datablockOffset;
     fseek(disk_img, parentInodeOffset, SEEK_SET);
     if (fwrite(&parentInode, sizeof(struct wfs_inode), 1, disk_img) != 1){
         printf("error writing parentInode ot file\n");
@@ -515,17 +529,16 @@ static int wfs_mkdir(const char* path, mode_t mode){
         printf("error inserting into Inode bitmap\n");
         fclose(disk_img);
         return inodeIdx;
-        // if this fails, we shouldn't attempt the to insert databitmap or any of the logic that follows in this function
     }
     // printInodeBitmap(superblock);
-    int dataIdx = insertDataBitmap();
-    if (dataIdx < 0){
-        printf("error inserting into data bitmap\n");
-        fclose(disk_img);
-        return dataIdx;
-    }
+    // int dataIdx = insertDataBitmap();
+    // if (dataIdx < 0){
+    //     printf("error inserting into data bitmap\n");
+    //     fclose(disk_img);
+    //     return dataIdx;
+    // }
     // printDataBitmap(superblock);
-    printf("inserted inode at %d and datanode at %d in bitmaps\n", inodeIdx, dataIdx);
+    printf("inserted inode at %d in bitmap\n", inodeIdx);
     // isnertion location of inode/datablock should match the idx of the bitmap -> 
     // inode should be placed at (inode_start + (idx * BLOCK_SIZE)
     // create inode, update inode bitmap accordingly and parent inode to point to this inode
@@ -562,38 +575,9 @@ static int wfs_mkdir(const char* path, mode_t mode){
     parent.name[sizeof(parent.name)] = '\0';
     parent.num = result; // parent is what we got from initial call to create traversal
     
-    int offset = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
-    // wipe datablock
-    struct wfs_dentry emptyDentry;
-    emptyDentry.num = -1; // Or any other invalid inode number
-    memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
-    char* blankName = "";
-    strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
-    emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
-
-    // Fill the data block with empty directory entries
-    printf("init new datablock...\n");
-    fseek(disk_img, offset, SEEK_SET);
-    for (int i = 0; i < (BLOCK_SIZE / sizeof(struct wfs_dentry)); i++) {
-        if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
-            printf("error writing empty directory entry to data block\n");
-            fclose(disk_img);
-            return -1;
-        }
-    }
-    fseek(disk_img, offset, SEEK_SET);
-    if (fwrite(&cur, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
-        printf("error writing dentry to datablock\n");
-        fclose(disk_img);
-        return -1;
-    }
-    if (fwrite(&parent, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
-        printf("error writing dentry to datablock\n");
-        fclose(disk_img);
-        return -1;
-    }
+   
     // write inode after writing datablock
-    inode.blocks[0] = offset; // newinode should point to our new datablock
+    // inode.blocks[0] = offset; // newinode should point to our new datablock
     if (writeInode(&inode, inodeIdx) == -1){
         printf("failed to write inode in mkdir\n");
         fclose(disk_img);

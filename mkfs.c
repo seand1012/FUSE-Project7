@@ -176,20 +176,7 @@ int main(int argc, char* argv[]){
             return -1;
         }
     }
-    // init dentry in 0th datablock with "."
-    struct wfs_dentry rootDataBlock;
-    char* dot = ".";
 
-    memset(rootDataBlock.name, 0, sizeof(rootDataBlock.name)); // Initialize name with zeros
-    strncpy(rootDataBlock.name, dot, sizeof(rootDataBlock.name));
-    rootDataBlock.name[sizeof(rootDataBlock.name)] = '\0';
-    rootDataBlock.num = rootInode.num;
-
-    fseek(fptr, start_data, SEEK_SET);
-    if(fwrite(&rootDataBlock, sizeof(struct wfs_dentry), 1, fptr) != 1){
-        printf("error writing the directory entry");
-    }
-    
     fseek(fptr, start_dbm, SEEK_SET);
     setBit(&zero, 0);
     if(fwrite(&zero, sizeof(int), 1, fptr) != 1){
@@ -203,9 +190,6 @@ int main(int argc, char* argv[]){
         if (fread(&dentry, sizeof(struct wfs_dentry), 1, fptr) != 1){
             printf("error looking through datablock\n");
         }
-        // if (dentry.num == -1){
-        //     continue;
-        // }
         printf("parentInodeIdx: %d, dentry - num: %d name: %s\n", 0, dentry.num, dentry.name);
     }
 
