@@ -651,9 +651,92 @@ static int wfs_mkdir(const char* path, mode_t mode){
     free(destinationNode);
     return 0;
 }
-
-static int wfs_unlink(){
+int deleteDentry(int inodeToDelete, int inodeToSearch){
+     struct wfs_inode parentInode;
+    int parentInodeOffset = superblock.i_blocks_ptr + (inodeToSearch * BLOCK_SIZE);
+    fseek(disk_img, parentInodeOffset, SEEK_SET);
+    if (fread(&parentInode, sizeof(struct wfs_inode), 1, disk_img) != 1) {
+        printf("error reading parent directory inode\n");
+        return -1;
+    }
+    // TODO: lazy allocation: does a datablock exist for this inode? if not allocate it, then perform dentry insert
+    struct wfs_dentry currentDentry;
+    for (int i = 0; i < N_BLOCKS; i++){ // go through all valid datablocks associated with this inode
+        if (parentInode.blocks[i] != 0){
+            for (int j = 0; j < (BLOCK_SIZE / sizeof(struct wfs_dentry)); j++){ // read all dentrys in this block
+                int offset = parentInode.blocks[i] + (j * sizeof(struct wfs_dentry));
+                fseek(disk_img, offset, SEEK_SET);
+                if (fread(&currentDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
+                    printf("error reading dentry in datablock at %ld\n", parentInode.blocks[i]);
+                    return -1;
+                }
+                printf("currentDentry: num: %d, name: %s, parent: %d\n", currentDentry.num, currentDentry.name, inodeToSearch);
+                // is this dentry available?
+                if (currentDentry.num == inodeToDelete){
+                    // write empty entry at offset and return success
+                    fseek(disk_img, offset, SEEK_SET);
+                    struct wfs_dentry emptyDentry;
+                    emptyDentry.num = -1; // Or any other invalid inode number
+                    memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
+                    char* blankName = "";
+                    strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
+                    emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
+                    if (fwrite(&emptyDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+                        printf("error writing new dentry to parent Inode\n");
+                        return -1;
+                    }
+                    return 0;
+                }
+            }
+        }
+    }
+    return -1;
+}
+/*
+    removes a file. if we have hard links, or special nodes behavior could be different
+*/
+static int wfs_unlink(const char* path){
     printf("In wfs_unlink\n");
+    // find node to remove
+    int parentInodeIdx = createTraversal(path);
+    // result will hold the inodeIdx of the second to last element
+    if (parentInodeIdx == -1){
+        printf("invalid path in wfs_mkdir\n");
+        return -ENOENT;
+    }
+    struct wfs_inode node_to_remove;
+    int inodeIdx = traversal(path, &node_to_remove);
+    if (inodeIdx < 0){
+        printf("error, path doesn't exist\n");
+        return -ENOENT;
+    }
+    // node to remove must be a file
+    if (node_to_remove.mode != S_IFREG){
+        printf("error, path doesn't point to a file\n");
+        return -ENOENT;
+    }
+    // remove datablocks that belong to this inode
+    for (int i = 0; i < N_BLOCKS; i++){
+        off_t offset = node_to_remove.blocks[i];
+        if (offset != 0) {
+            // find correspoding idx in databitmap
+            int dataIdx = (offset - superblock.d_blocks_ptr) / BLOCK_SIZE;
+            // remove from data bitmap
+            if (removeDataBitmap(dataIdx) != 0){
+                printf("error removing from databitmap\n");
+                return -1;
+            }
+        }
+    }
+    // remove from inode bitmap 
+    if (removeInodeBitmap(inodeIdx) != 0){
+        printf("error removing from inode bitmap\n");
+        return -1;
+    }
+    // parentInode dentry needs to be deleted, 
+    deleteDentry(inodeIdx, parentInodeIdx);
+    
+    
     return 0;
 }
 
