@@ -740,23 +740,88 @@ static int wfs_unlink(const char* path){
     return 0;
 }
 
-static int wfs_rmdir(){
+int removeDentry(int parentInodeIdx, struct wfs_dentry* dentry){
+    printf("In removeDentry\n");
+
+    struct wfs_inode parentInode;
+    int parentInodeOffset = superblock.i_blocks_ptr + (parentInodeIdx * BLOCK_SIZE);
+
+    fseek(disk_img, parentInodeOffset, SEEK_SET);
+    if (fread(&parentInode, sizeof(struct wfs_inode), 1, disk_img) != 1) {
+        printf("Error reading parent directory inode\n");
+        return -1;
+    }
+
+    struct wfs_dentry currentDentry;
+
+    for(int i = 0; i < N_BLOCKS; i++){
+        if(parentInode.blocks[i] != 0){
+            for(int j = 0; j < (BLOCK_SIZE / sizeof(struct wfs_dentry)); j++){
+                int offset = parentInode.blocks[i] + (j * sizeof(struct wfs_dentry));
+                fseek(disk_img, offset, SEEK_SET);
+                if (fread(&currentDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
+                    printf("Error reading dentry in datablock at %ld\n", parentInode.blocks[i]);
+                    return -1;
+                }
+
+                if(currentDentry.num == dentry->num){
+                    currentDentry.num = -1;
+                    fseek(disk_img, offset, SEEK_SET);
+
+                    if(fwrite(&currentDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
+                        printf("Error writing updated dentry to parent Inode\n");
+                        return -1;
+                    }
+                    return 0;
+                }
+            }
+        }
+    }
+    return -ENOENT;
+}
+
+static int wfs_rmdir(const char* path){
     printf("In wfs_rmdir\n");
+  
+    int result = createTraversal(path);
+    // result will hold the inodeIdx of the second to last element
+    if (result == -1){
+        printf("invalid path in wfs_mkdir\n");
+        return -ENOENT;
+    }
+    disk_img = fopen(disk_path, "r+");
+    printf("second to last inode is: %d\n", result);
+
+    // get name of node to insert (should be no slashes if /a is path need a, if /a/b, need b)
+    const char* lastSlash = strrchr(path, '/');
+    char* nodeToRemove;
+    if (lastSlash == NULL) {
+        nodeToRemove = strdup(path); // If no slash found, return a duplicate of the whole path
+    } else {
+        nodeToRemove = strdup(lastSlash + 1); // Return a duplicate of the substring after the last slash
+    }
+
+    printf("Destination node: %s\n", nodeToRemove);
+
+    printf("Exiting wfs_rmdir\n\n");
     return 0;
 }
 
 static int wfs_read(){
     printf("In wfs_read\n");
+    printf("Exiting wfs_read\n\n");
     return 0;
 }
 
 static int wfs_write(){
     printf("In wfs_write\n");
+    printf("Exiting wfs_write\n\n");
     return 0;
 }
 
 static int wfs_readdir(){
     printf("In wfs_readdir\n");
+    printf("Exiting wfs_readdir\n\n");
     return 0;
 }
 
