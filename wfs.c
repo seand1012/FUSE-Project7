@@ -871,15 +871,21 @@ static int wfs_rmdir(const char* path){
     printf("Exiting wfs_rmdir\n\n");
     return 0;
 }
-
-static int wfs_read(){
+/*
+    return number of bytes read
+*/
+static int wfs_read(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_read\n");
     printf("Exiting wfs_read\n\n");
     return 0;
 }
-
-static int wfs_write(){
+/*
+    returns number of bytes written
+*/
+static int wfs_write(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_write\n");
+    // write as much as you can, return error if you run out of space
+    // will require allocating datablocks if this file has none and allcoating more if more space is needed
     printf("Exiting wfs_write\n\n");
     return 0;
 }
