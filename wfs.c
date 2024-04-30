@@ -771,6 +771,7 @@ static int wfs_unlink(const char* path){
     return 0;
 }
 
+/*
 int removeDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     printf("In removeDentry\n");
 
@@ -810,6 +811,7 @@ int removeDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     }
     return -ENOENT;
 }
+*/
 
 static int wfs_rmdir(const char* path){
     printf("In wfs_rmdir\n");
@@ -882,7 +884,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
 /*
     returns number of bytes written
 */
-static int wfs_write(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
+static int wfs_write(const char* path, const char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_write\n");
     // write as much as you can, return error if you run out of space
     // will require allocating datablocks if this file has none and allcoating more if more space is needed
