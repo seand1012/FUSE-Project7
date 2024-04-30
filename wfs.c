@@ -949,7 +949,35 @@ static int wfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_
     struct wfs_inode directory;
     int directoryInodeIdx = traversal(path, &directory);
     printf("dir inode idx: %d\n", directoryInodeIdx);
+
+    disk_img = fopen(disk_path, "r+");
+    if (!disk_img){
+        printf("ERROR opening disk image in wfs_getattr\n");
+        return -1;
+    }
     // read data nodes of this directory and put all valid dentrys into buf
+    // filler(buf, name, stat, off)
+    for (int i = 0; i < N_BLOCKS; i++){
+        int datablockOffset = directory.blocks[i];
+        fseek(disk_img, datablockOffset, SEEK_SET);
+        if (datablockOffset != 0){
+            // read dentries from datablock
+            struct wfs_dentry dentry;
+            
+            if (fread(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
+                printf("error reading dentry from directory\n");
+                break;
+            }
+            printf("dentry num: %d name: %s\n", dentry.num, dentry.name);
+            if (dentry.num != -1){
+                // valid dentry
+                printf("dentry num: %d name: %s\n", dentry.num, dentry.name);
+                if (filler(buf, dentry.name, NULL, 0) != 0){
+                    return 0;
+                }
+            }
+        }
+    }
     // readdir should also add . and .. entries to buffer
     printf("Exiting wfs_readdir\n\n");
     return 0;
