@@ -771,48 +771,6 @@ static int wfs_unlink(const char* path){
     return 0;
 }
 
-/*
-int removeDentry(int parentInodeIdx, struct wfs_dentry* dentry){
-    printf("In removeDentry\n");
-
-    struct wfs_inode parentInode;
-    int parentInodeOffset = superblock.i_blocks_ptr + (parentInodeIdx * BLOCK_SIZE);
-
-    fseek(disk_img, parentInodeOffset, SEEK_SET);
-    if (fread(&parentInode, sizeof(struct wfs_inode), 1, disk_img) != 1) {
-        printf("Error reading parent directory inode\n");
-        return -1;
-    }
-
-    struct wfs_dentry currentDentry;
-
-    for(int i = 0; i < N_BLOCKS; i++){
-        if(parentInode.blocks[i] != 0){
-            for(int j = 0; j < (BLOCK_SIZE / sizeof(struct wfs_dentry)); j++){
-                int offset = parentInode.blocks[i] + (j * sizeof(struct wfs_dentry));
-                fseek(disk_img, offset, SEEK_SET);
-                if (fread(&currentDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1) {
-                    printf("Error reading dentry in datablock at %ld\n", parentInode.blocks[i]);
-                    return -1;
-                }
-
-                if(currentDentry.num == dentry->num){
-                    currentDentry.num = -1;
-                    fseek(disk_img, offset, SEEK_SET);
-
-                    if(fwrite(&currentDentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
-                        printf("Error writing updated dentry to parent Inode\n");
-                        return -1;
-                    }
-                    return 0;
-                }
-            }
-        }
-    }
-    return -ENOENT;
-}
-*/
-
 static int wfs_rmdir(const char* path){
     printf("In wfs_rmdir\n");
   
@@ -897,6 +855,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
     // go to datablocks for this file and read them into the buffer ("size" bytes)
     off_t start = offset;
     // byutes left to read is size - bytesRead
+    printf("searching through datablocks for this inode...\n");
     for (int i = 0; i < N_BLOCKS; i++){
         if (bytesRead == size){
             break;
@@ -926,17 +885,39 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
     }
     // start at "offset bytes into the file"
     // return number of bytes read (should be size bytes or until end of file/data)
-    printf("Exiting wfs_read\n\n");
+    printf("Exiting wfs_read ret value: %d\n\n", bytesRead);
     fclose(disk_img);
     return bytesRead;
+}
+/*
+    inserts into data bitmap and creates a datablock for this inode
+    returns the idx of this data block created. mutates the inode struct by adding "offset" to inode.blocks if there is space
+*/
+int allocateFileDatablock(struct wfs_inode* inode){
+    return -1;
 }
 /*
     returns number of bytes written
 */
 static int wfs_write(const char* path, const char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_write\n");
-    // write as much as you can, return error if you run out of space
-    // will require allocating datablocks if this file has none and allcoating more if more space is needed
+    struct wfs_inode inode;
+    // does file already exist? if it doesn't do we create it?
+    int traversalResult = traversal(path, &inode);
+    if (traversalResult < 0) {
+        printf("file doesn't exist\n");
+        return -ENOENT;
+    }
+    // write as much as you can up to "size" bytes, return error if you run out of space, write from buffer into datablocks
+    for (int i = 0; i < N_BLOCKS; i++){
+        // find datablocks to try and write to
+    }
+    // allocate new datablocks?
+    allocateFileDatablock(&inode);
+
+    // write updated inode to file
+
+
     printf("Exiting wfs_write\n\n");
     return 0;
 }
