@@ -22,7 +22,7 @@ void setBit(unsigned int* bitmap, int pos) {
 }
 
 void clearBit(unsigned int* bitmap, int pos) {
-    *bitmap &= (1U << pos);
+    *bitmap &= ~(1U << pos);
 }
 
 int getBitValue(unsigned int* bitmap, int pos) {
@@ -234,6 +234,7 @@ int insertInodeBitmap(){
 // returns 0 on success and -1 on failure
 // assumes the disk_img file is open for writing
 int removeInodeBitmap(int idx){
+    printf("removing inode at idx: %d in bitmap\n", idx);
     int offset = superblock.i_bitmap_ptr + ((idx/32) *sizeof(unsigned int));
     int bitPosition = idx % 32; // offset finds which unsigned int holds our idx, bitPosition is the bit within this unsigned int that we want to mutate
     fseek(disk_img, offset, SEEK_SET);
@@ -711,8 +712,18 @@ static int wfs_unlink(const char* path){
         return -ENOENT;
     }
     // node to remove must be a file
+    printf("inode idx: %d parent inode idx: %d\n", inodeIdx, parentInodeIdx);
+
+    disk_img = fopen(disk_path, "r+");
+    // print contents of superblock - should be at offset 0
+    if (!disk_img){
+        printf("ERROR opening disk image in wfs_getattr\n");
+        return -1;
+    }
+
     if (node_to_remove.mode != S_IFREG){
         printf("error, path doesn't point to a file\n");
+        fclose(disk_img);
         return -ENOENT;
     }
     // remove datablocks that belong to this inode
@@ -724,6 +735,7 @@ static int wfs_unlink(const char* path){
             // remove from data bitmap
             if (removeDataBitmap(dataIdx) != 0){
                 printf("error removing from databitmap\n");
+                fclose(disk_img);
                 return -1;
             }
         }
@@ -731,12 +743,13 @@ static int wfs_unlink(const char* path){
     // remove from inode bitmap 
     if (removeInodeBitmap(inodeIdx) != 0){
         printf("error removing from inode bitmap\n");
+        fclose(disk_img);
         return -1;
     }
     // parentInode dentry needs to be deleted, 
     deleteDentry(inodeIdx, parentInodeIdx);
     
-    
+    fclose(disk_img);
     return 0;
 }
 
