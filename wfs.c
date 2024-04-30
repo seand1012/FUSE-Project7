@@ -771,6 +771,7 @@ static int wfs_unlink(const char* path){
     return 0;
 }
 
+/*
 int removeDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     printf("In removeDentry\n");
 
@@ -810,6 +811,7 @@ int removeDentry(int parentInodeIdx, struct wfs_dentry* dentry){
     }
     return -ENOENT;
 }
+*/
 
 static int wfs_rmdir(const char* path){
     printf("In wfs_rmdir\n");
