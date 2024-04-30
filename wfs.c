@@ -891,10 +891,29 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
 }
 /*
     inserts into data bitmap and creates a datablock for this inode
-    returns the idx of this data block created. mutates the inode struct by adding "offset" to inode.blocks if there is space
+    returns the idx of this data block created in our data bitmap. mutates the inode struct by adding "offset" to inode.blocks if there is space
+    this function mutates an inode in memory but the changes to the inode needs to be written to the file after this file is called
 */
 int allocateFileDatablock(struct wfs_inode* inode){
-    return -1;
+    // is there space for our file to point to more datablocks?
+    int insertIdx = -1;
+    for (int i = 0; i < N_BLOCKS; i++){
+        if (inode->blocks[i] == 0){
+            insertIdx = i;
+            break;
+        }
+    }
+    if (insertIdx < 0){ // no more space to write
+        return -ENOSPC;
+    }
+    // is there space in data bitmap?
+    int datablockIdx = insertDataBitmap();
+    if (datablockIdx < 0){ 
+        return datablockIdx;
+    }
+    off_t datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+    inode->blocks[insertIdx] = datablockOffset;
+    return datablockIdx;
 }
 /*
     returns number of bytes written
@@ -916,7 +935,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // while(still data to write) {}
     allocateFileDatablock(&inode);
     // write to newly allocated datablock
-    
+
     // write updated inode to file
 
 
