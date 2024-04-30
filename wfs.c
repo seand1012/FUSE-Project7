@@ -693,6 +693,22 @@ int deleteDentry(int inodeToDelete, int inodeToSearch){
     }
     return -1;
 }
+int clearDatablock(int datablockIdx){
+    int offset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+    // Seek to the position of the data block
+    if (fseek(disk_img, offset, SEEK_SET) != 0) {
+        perror("Error seeking file");
+        return -1;
+    }
+
+    // Write 512 zero bytes to clear the data block
+    char zero_buffer[512] = {0}; // Initialize a buffer with zeros
+    if (fwrite(zero_buffer, sizeof(char), sizeof(zero_buffer), disk_img) != sizeof(zero_buffer)) {
+        perror("Error writing to file");
+        return -1;
+    }
+    return 0;
+}
 /*
     removes a file. if we have hard links, or special nodes behavior could be different
 */
@@ -738,6 +754,8 @@ static int wfs_unlink(const char* path){
                 fclose(disk_img);
                 return -1;
             }
+            clearDatablock(dataIdx);
+
         }
     }
     // remove from inode bitmap 
@@ -796,26 +814,60 @@ int removeDentry(int parentInodeIdx, struct wfs_dentry* dentry){
 static int wfs_rmdir(const char* path){
     printf("In wfs_rmdir\n");
   
-    int result = createTraversal(path);
+    int parentInodeIdx = createTraversal(path);
     // result will hold the inodeIdx of the second to last element
-    if (result == -1){
+    if (parentInodeIdx == -1){
         printf("invalid path in wfs_mkdir\n");
         return -ENOENT;
     }
-    disk_img = fopen(disk_path, "r+");
-    printf("second to last inode is: %d\n", result);
+    struct wfs_inode node_to_remove;
+    int inodeIdx = traversal(path, &node_to_remove);
+    if (inodeIdx < 0){
+        printf("error, path doesn't exist\n");
+        return -ENOENT;
+    }
+    // node to remove must be a file
+    printf("inode idx: %d parent inode idx: %d\n", inodeIdx, parentInodeIdx);
 
-    // get name of node to insert (should be no slashes if /a is path need a, if /a/b, need b)
-    const char* lastSlash = strrchr(path, '/');
-    char* nodeToRemove;
-    if (lastSlash == NULL) {
-        nodeToRemove = strdup(path); // If no slash found, return a duplicate of the whole path
-    } else {
-        nodeToRemove = strdup(lastSlash + 1); // Return a duplicate of the substring after the last slash
+    disk_img = fopen(disk_path, "r+");
+    // print contents of superblock - should be at offset 0
+    if (!disk_img){
+        printf("ERROR opening disk image in wfs_getattr\n");
+        return -1;
     }
 
-    printf("Destination node: %s\n", nodeToRemove);
-
+    if (node_to_remove.mode != S_IFDIR){
+        printf("error, path doesn't point to a directory\n");
+        fclose(disk_img);
+        return -ENOENT;
+    }
+    // remove datablocks that belong to this inode
+    for (int i = 0; i < N_BLOCKS; i++){
+        off_t offset = node_to_remove.blocks[i];
+        if (offset != 0) {
+            // find correspoding idx in databitmap
+            int dataIdx = (offset - superblock.d_blocks_ptr) / BLOCK_SIZE;
+            // remove from data bitmap
+            if (removeDataBitmap(dataIdx) != 0){
+                printf("error removing from databitmap\n");
+                fclose(disk_img);
+                return -1;
+            }
+            // do we also need to clear datablocks out? after removing from databitmap
+            clearDatablock(dataIdx);
+            
+        }
+    }
+    // remove from inode bitmap 
+    if (removeInodeBitmap(inodeIdx) != 0){
+        printf("error removing from inode bitmap\n");
+        fclose(disk_img);
+        return -1;
+    }
+    // parentInode dentry needs to be deleted, 
+    deleteDentry(inodeIdx, parentInodeIdx);
+    
+    fclose(disk_img);
     printf("Exiting wfs_rmdir\n\n");
     return 0;
 }
