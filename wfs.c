@@ -912,9 +912,11 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     for (int i = 0; i < N_BLOCKS; i++){
         // find datablocks to try and write to
     }
-    // allocate new datablocks?
+    // allocate new datablock(s)?
+    // while(still data to write) {}
     allocateFileDatablock(&inode);
-
+    // write to newly allocated datablock
+    
     // write updated inode to file
 
 
@@ -922,8 +924,14 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     return 0;
 }
 
-static int wfs_readdir(){
+// https://www.cs.hmc.edu/~geoff/classes/hmc.cs135.201001/homework/fuse/fuse_doc.html#readdir-details
+static int wfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_readdir\n");
+    struct wfs_inode directory;
+    int directoryInodeIdx = traversal(path, &directory);
+    printf("dir inode idx: %d\n", directoryInodeIdx);
+    // read data nodes of this directory and put all valid dentrys into buf
+    // readdir should also add . and .. entries to buffer
     printf("Exiting wfs_readdir\n\n");
     return 0;
 }
