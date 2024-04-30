@@ -830,7 +830,6 @@ static int wfs_rmdir(const char* path){
     printf("inode idx: %d parent inode idx: %d\n", inodeIdx, parentInodeIdx);
 
     disk_img = fopen(disk_path, "r+");
-    // print contents of superblock - should be at offset 0
     if (!disk_img){
         printf("ERROR opening disk image in wfs_getattr\n");
         return -1;
@@ -876,13 +875,63 @@ static int wfs_rmdir(const char* path){
 */
 static int wfs_read(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_read\n");
+    // find file to read from
+    struct wfs_inode inode;
+    int bytesRead = 0; // return value of our read function
+    int traversalResult = traversal(path, &inode);
+    if (traversalResult < 0){
+        printf("couldnt find file to read from. path:  %s\n", path);
+        return -ENOENT;
+    }
+    if (inode.mode != S_IFREG){
+        printf("destination node of path isn't a file, path: %s\n", path);
+        return -ENOENT;
+    }
+    disk_img = fopen(disk_path, "r"); // open file for reading
+    if (!disk_img){
+        printf("ERROR opening disk image in wfs_getattr\n");
+        return -1;
+    }
+    // go to datablocks for this file and read them into the buffer ("size" bytes)
+    off_t start = offset;
+    // byutes left to read is size - bytesRead
+    for (int i = 0; i < N_BLOCKS; i++){
+        if (bytesRead == size){
+            break;
+        }
+        int datablockOffset = inode.blocks[i];
+        if (datablockOffset != 0){
+            int bytesLeftToRead = size - bytesRead;
+            size_t bytesToReadFromBlock = (bytesLeftToRead > BLOCK_SIZE) ? BLOCK_SIZE : bytesLeftToRead;
+
+            // read contiguously from this data block starting at "datablockOffset + start, after reading from first block start is 0?
+            fseek(disk_img, datablockOffset + start, SEEK_SET);
+            // read character by character until we reach EOF or BLOCK_SIZE or size, write chars to buf
+            for (int j = 0; j < bytesToReadFromBlock; j++){
+                size_t bytesReadFromFile = fread(buf, 1, 1, disk_img);
+                if (bytesRead <= 0) {
+                    break;
+                }
+                buf += bytesReadFromFile;
+                bytesLeftToRead -= bytesReadFromFile;
+                bytesRead += bytesReadFromFile;
+                start = 0;
+                if (bytesRead == size){
+                    break;
+                }
+            }
+        }
+    }
+    // start at "offset bytes into the file"
+    // return number of bytes read (should be size bytes or until end of file/data)
     printf("Exiting wfs_read\n\n");
-    return 0;
+    fclose(disk_img);
+    return bytesRead;
 }
 /*
     returns number of bytes written
 */
-static int wfs_write(const char* path, char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
+static int wfs_write(const char* path, const char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_write\n");
     // write as much as you can, return error if you run out of space
     // will require allocating datablocks if this file has none and allcoating more if more space is needed
