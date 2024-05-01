@@ -93,6 +93,7 @@ int traversal(const char* path, struct wfs_inode* buf){
     char* prev = NULL;
     int currentNode = 0;
     while(token != NULL){
+        printf("token: %s\n", token);
         currentNode = findChild(currentNode, token);
         if (currentNode == -1){
             printf("path doesn't exist\n");
@@ -324,7 +325,7 @@ int removeDataBitmap(int idx){
     }
     if (getBitValue(&dbm, bitPosition) % 2 == 0){
         printf("index: %d of inode bitmap is already 0\n", idx);
-        return -1;
+        return 0;
     }
     clearBit(&dbm, bitPosition);
     fseek(disk_img, offset, SEEK_SET);
@@ -812,6 +813,7 @@ static int wfs_rmdir(const char* path){
                 fclose(disk_img);
                 return -1;
             }
+            // printf("\n\nbitmap after removing %d\n\n", dataIdx);
             // do we also need to clear datablocks out? after removing from databitmap
             clearDatablock(dataIdx);
             
@@ -829,6 +831,17 @@ static int wfs_rmdir(const char* path){
     fclose(disk_img);
     printf("Exiting wfs_rmdir\n\n");
     return 0;
+}
+int getFileSize(struct wfs_inode* inode){
+    // go through datablocks and see which are being used or not being used
+    int countDatablocks = 0;
+    for (int i = 0; i < N_BLOCKS; i++){
+        if (inode->blocks[i] != 0){
+            countDatablocks += 1;
+        }
+    }
+    return countDatablocks;
+    // return number of valid datablocks as size of this file
 }
 /*
     return number of bytes read
@@ -852,34 +865,51 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         printf("ERROR opening disk image in wfs_getattr\n");
         return -1;
     }
-    // go to datablocks for this file and read them into the buffer ("size" bytes)
-    off_t start = offset;
+    // go to d atablocks for this file and read them into the buffer ("size" bytes)
+    if (offset > (BLOCK_SIZE * N_BLOCKS)){
+        printf("not a valid offset\n");
+        return -1;
+    }
+    int numValidBlocks = getFileSize(&inode);
+    if (offset > numValidBlocks * BLOCK_SIZE){
+        return -1;
+    }
+    int start_block = offset / BLOCK_SIZE;
+    int start_offset_block = offset % BLOCK_SIZE;
+    // if offset is 513, go to 1th idx of second block
+    // if > 512 * N_BLOCKS - invalid
     // byutes left to read is size - bytesRead
-    printf("searching through datablocks for this inode...\n");
+    int curBlock = -1;
+    printf("searching %d through datablocks for this inode...\n", numValidBlocks);
     for (int i = 0; i < N_BLOCKS; i++){
         if (bytesRead == size){
             break;
         }
         int datablockOffset = inode.blocks[i];
         if (datablockOffset != 0){
-            int bytesLeftToRead = size - bytesRead;
-            size_t bytesToReadFromBlock = (bytesLeftToRead > BLOCK_SIZE) ? BLOCK_SIZE : bytesLeftToRead;
+            curBlock += 1;
+            if (curBlock == start_block){
+                // start reading from this block
+                int bytesLeftToRead = size - bytesRead;
+                size_t bytesToReadFromBlock = (bytesLeftToRead > (BLOCK_SIZE - start_offset_block)) ? (BLOCK_SIZE - start_offset_block) : bytesLeftToRead;
 
-            // read contiguously from this data block starting at "datablockOffset + start, after reading from first block start is 0?
-            fseek(disk_img, datablockOffset + start, SEEK_SET);
-            // read character by character until we reach EOF or BLOCK_SIZE or size, write chars to buf
-            for (int j = 0; j < bytesToReadFromBlock; j++){
-                size_t bytesReadFromFile = fread(buf, 1, 1, disk_img);
-                if (bytesRead <= 0) {
-                    break;
+                // read contiguously from this data block starting at "datablockOffset + start, after reading from first block start is 0?
+                fseek(disk_img, datablockOffset + start_offset_block, SEEK_SET);
+                // read character by character until we reach EOF or BLOCK_SIZE or size, write chars to buf
+                for (int j = 0; j < bytesToReadFromBlock; j++){
+                    size_t bytesReadFromFile = fread(buf, 1, 1, disk_img);
+                    if (bytesRead <= 0) {
+                        break;
+                    }
+                    buf += bytesReadFromFile;
+                    bytesLeftToRead -= bytesReadFromFile;
+                    bytesRead += bytesReadFromFile;
+                    start_offset_block = 0;
+                    if (bytesRead == size){
+                        break;
+                    }
                 }
-                buf += bytesReadFromFile;
-                bytesLeftToRead -= bytesReadFromFile;
-                bytesRead += bytesReadFromFile;
-                start = 0;
-                if (bytesRead == size){
-                    break;
-                }
+                start_block += 1;
             }
         }
     }
@@ -926,6 +956,14 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     if (traversalResult < 0) {
         printf("file doesn't exist\n");
         return -ENOENT;
+    }
+    // do we have enough space?
+    int start_block = offset / BLOCK_SIZE;
+    int start_offset_block = offset % BLOCK_SIZE;
+    printf("start block: %d , offset into block: %d\n", start_block, start_offset_block);
+    int fileSizeDatablocks = getFileSize(&inode);
+    if (fileSizeDatablocks < size / BLOCK_SIZE){
+        // we need to allocate more space
     }
     // write as much as you can up to "size" bytes, return error if you run out of space, write from buffer into datablocks
     for (int i = 0; i < N_BLOCKS; i++){
