@@ -43,8 +43,8 @@ int findChild(int parentInodeIdx, char* child){
         return -1;
     }
     // is this parentnode a directory?
-    if (parentDirectoryInode.mode != S_IFDIR){
-        printf("Parent node not a directory\n");
+    if (!(parentDirectoryInode.mode | S_IFDIR)){
+        printf("Parent node not a directory: %d, S_IFDIR = %d, parentInode.mode: %d\n", parentDirectoryInode.num, S_IFDIR, parentDirectoryInode.mode);
         return -1;
     }
     // go through this inodes' datablocks. possible dentrys in a datablock is 512 / sizeof(wfs_dentry)
@@ -263,11 +263,11 @@ int initDirectoryDatablock(int idx){
     int offset = superblock.d_blocks_ptr + (idx * BLOCK_SIZE);
     // wipe datablock
     struct wfs_dentry emptyDentry;
-    emptyDentry.num = -1; // Or any other invalid inode number
     memset(emptyDentry.name, 0, sizeof(emptyDentry.name)); // Initialize name with zeros
     char* blankName = "";
     strncpy(emptyDentry.name, blankName, sizeof(emptyDentry.name));
     emptyDentry.name[sizeof(emptyDentry.name) - 1] = '\0'; // https://stackoverflow.com/questions/25838628/copying-string-literals-in-c-into-an-character-array
+    emptyDentry.num = -1; // Or any other invalid inode number
 
     // Fill the data block with empty directory entries
     printf("init new datablock...\n");
@@ -738,7 +738,7 @@ static int wfs_unlink(const char* path){
         return -1;
     }
 
-    if (node_to_remove.mode != S_IFREG){
+    if (!(node_to_remove.mode | S_IFREG)){
         printf("error, path doesn't point to a file\n");
         fclose(disk_img);
         return -ENOENT;
@@ -796,7 +796,7 @@ static int wfs_rmdir(const char* path){
         return -1;
     }
 
-    if (node_to_remove.mode != S_IFDIR){
+    if (!(node_to_remove.mode | S_IFDIR)){
         printf("error, path doesn't point to a directory\n");
         fclose(disk_img);
         return -ENOENT;
@@ -856,7 +856,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         printf("couldnt find file to read from. path:  %s\n", path);
         return -ENOENT;
     }
-    if (inode.mode != S_IFREG){
+    if (!(inode.mode | S_IFREG)){
         printf("destination node of path isn't a file, path: %s\n", path);
         return -ENOENT;
     }
@@ -1042,10 +1042,11 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
             buf += 1; // is this correct behavior for a pointer?
             }
             if (bytesWritten == size){
+                printf("Exiting wfs_write %d\n\n", bytesWritten);
                 return bytesWritten;
             }
     }
-    printf("Exiting wfs_write\n\n");
+    printf("Exiting wfs_write %d\n\n", bytesWritten);
     return bytesWritten;
 }
 
