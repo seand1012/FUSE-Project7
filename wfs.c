@@ -1053,6 +1053,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
 static int wfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info* fi){
     printf("In wfs_readdir\n");
     struct wfs_inode directory;
+    
     int directoryInodeIdx = traversal(path, &directory);
     printf("dir inode idx: %d\n", directoryInodeIdx);
 
@@ -1066,20 +1067,21 @@ static int wfs_readdir(const char* path, void* buf, fuse_fill_dir_t filler, off_
     for (int i = 0; i < N_BLOCKS; i++){
         int datablockOffset = directory.blocks[i];
         fseek(disk_img, datablockOffset, SEEK_SET);
-        if (datablockOffset != 0){
-            // read dentries from datablock
+        for(int j = 0; j < BLOCK_SIZE / sizeof(struct wfs_dentry); j++){
             struct wfs_dentry dentry;
-            
-            if (fread(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
-                printf("error reading dentry from directory\n");
-                break;
-            }
-            printf("dentry num: %d name: %s\n", dentry.num, dentry.name);
-            if (dentry.num != -1){
-                // valid dentry
+            if (datablockOffset != 0){
+                // read dentries from datablock
+                if (fread(&dentry, sizeof(struct wfs_dentry), 1, disk_img) != 1){
+                    printf("error reading dentry from directory\n");
+                    break;
+                }
                 printf("dentry num: %d name: %s\n", dentry.num, dentry.name);
-                if (filler(buf, dentry.name, NULL, 0) != 0){
-                    return 0;
+                if (dentry.num != -1){
+                    // valid dentry
+                    printf("dentry num: %d name: %s\n", dentry.num, dentry.name);
+                    if (filler(buf, dentry.name, NULL, 0) != 0){
+                        return -ENOSPC;
+                    }
                 }
             }
         }
