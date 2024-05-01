@@ -965,17 +965,36 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     disk_img = fopen(disk_path, "r+"); // open file for reading
     if (!disk_img){
         printf("ERROR opening disk image in write\n");
-        return -1;
+        return 0;
     }
-
+    int bytesWritten = 0;
     int fileSizeDatablocks = getFileSize(&inode);
     printf("datablocks to go through: %d\n", fileSizeDatablocks);
     if (fileSizeDatablocks < size / BLOCK_SIZE){
         // we need to allocate more space
     }
+    int currentValidBlock = -1;
     // write as much as you can up to "size" bytes, return error if you run out of space, write from buffer into datablocks
     for (int i = 0; i < N_BLOCKS; i++){
-        // find datablocks to try and write to
+        // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
+        if (inode.blocks[i] != 0){
+            // valid block
+            currentValidBlock += 1;
+            if (currentValidBlock >= start_block){
+                // start writing at start_block_offset
+                fseek(disk_img, inode.blocks[i] + start_offset_block, SEEK_SET);
+                // write char by char, if we write "size" bytes, exit
+                int charsToRead = 0;
+                if ((BLOCK_SIZE - start_offset_block) < (size-bytesWritten)){
+                    charsToRead = BLOCK_SIZE - start_offset_block;
+                }else{
+                    charsToRead = size - bytesWritten;
+                }
+                for (int j = 0; j < charsToRead; j++){
+                    // write from buf to file
+                }
+            }
+        }
     }
     // if there is still work to be done and we have no more datablocks to write to -> allocate new ones
     // allocate new datablock(s)?
@@ -987,7 +1006,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
 
 
     printf("Exiting wfs_write\n\n");
-    return 0;
+    return bytesWritten;
 }
 
 // https://www.cs.hmc.edu/~geoff/classes/hmc.cs135.201001/homework/fuse/fuse_doc.html#readdir-details
