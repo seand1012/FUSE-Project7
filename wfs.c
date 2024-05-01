@@ -949,7 +949,7 @@ int allocateFileDatablock(struct wfs_inode* inode){
     returns number of bytes written
 */
 static int wfs_write(const char* path, const char *buf, size_t size, off_t offset, struct fuse_file_info* fi){
-    printf("In wfs_write\n");
+    printf("In wfs_write, size: %zd, offset: %zd\n", size, offset);
     struct wfs_inode inode;
     // does file already exist? if it doesn't do we create it?
     int traversalResult = traversal(path, &inode);
@@ -961,7 +961,15 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     int start_block = offset / BLOCK_SIZE;
     int start_offset_block = offset % BLOCK_SIZE;
     printf("start block: %d , offset into block: %d\n", start_block, start_offset_block);
+    
+    disk_img = fopen(disk_path, "r+"); // open file for reading
+    if (!disk_img){
+        printf("ERROR opening disk image in write\n");
+        return -1;
+    }
+
     int fileSizeDatablocks = getFileSize(&inode);
+    printf("datablocks to go through: %d\n", fileSizeDatablocks);
     if (fileSizeDatablocks < size / BLOCK_SIZE){
         // we need to allocate more space
     }
@@ -969,9 +977,10 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     for (int i = 0; i < N_BLOCKS; i++){
         // find datablocks to try and write to
     }
+    // if there is still work to be done and we have no more datablocks to write to -> allocate new ones
     // allocate new datablock(s)?
     // while(still data to write) {}
-    allocateFileDatablock(&inode);
+    // allocateFileDatablock(&inode); // mutates inode with new offsets in blocks array
     // write to newly allocated datablock
 
     // write updated inode to file
