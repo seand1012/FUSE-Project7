@@ -888,7 +888,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         int datablockOffset = inode.blocks[i];
         if (datablockOffset != 0){
             curBlock += 1;
-            if (curBlock == start_block){
+            if (curBlock >= start_block){
                 // start reading from this block
                 int bytesLeftToRead = size - bytesRead;
                 size_t bytesToReadFromBlock = (bytesLeftToRead > (BLOCK_SIZE - start_offset_block)) ? (BLOCK_SIZE - start_offset_block) : bytesLeftToRead;
@@ -898,18 +898,18 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                 // read character by character until we reach EOF or BLOCK_SIZE or size, write chars to buf
                 for (int j = 0; j < bytesToReadFromBlock; j++){
                     size_t bytesReadFromFile = fread(buf, 1, 1, disk_img);
-                    if (bytesRead <= 0) {
+                    if (bytesReadFromFile <= 0) {
                         break;
                     }
-                    buf += bytesReadFromFile;
-                    bytesLeftToRead -= bytesReadFromFile;
-                    bytesRead += bytesReadFromFile;
-                    start_offset_block = 0;
+                    buf += 1;
+                    bytesLeftToRead -= 1;
+                    bytesRead += 1;
                     if (bytesRead == size){
                         break;
                     }
                 }
-                start_block += 1;
+                start_offset_block = 0;
+                // start_block += 1;
             }
         }
     }
