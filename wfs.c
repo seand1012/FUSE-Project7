@@ -970,9 +970,9 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     int bytesWritten = 0;
     int fileSizeDatablocks = getFileSize(&inode);
     printf("datablocks to go through: %d\n", fileSizeDatablocks);
-    if (fileSizeDatablocks < size / BLOCK_SIZE){
-        // we need to allocate more space
-    }
+    // if (fileSizeDatablocks < size / BLOCK_SIZE){
+    //     // we need to allocate more space
+    // }
     int currentValidBlock = -1;
     // write as much as you can up to "size" bytes, return error if you run out of space, write from buffer into datablocks
     for (int i = 0; i < N_BLOCKS; i++){
@@ -987,8 +987,10 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 int charsToRead = 0;
                 if ((BLOCK_SIZE - start_offset_block) < (size-bytesWritten)){
                     charsToRead = BLOCK_SIZE - start_offset_block;
+                    printf("(BLOCK_SIZE - start_offset_block) < (size-bytesWritten):  %d\n", charsToRead);
                 }else{
                     charsToRead = size - bytesWritten;
+                    printf("(BLOCK_SIZE - start_offset_block) >= (size-bytesWritten):  %d\n", charsToRead);
                 }
                 for (int j = 0; j < charsToRead; j++){
                     // write from buf to file
@@ -999,9 +1001,11 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                     bytesWritten += 1;
                     buf += 1; // is this correct behavior for a pointer?
                 }
+                start_offset_block = 0;
                 if (bytesWritten == size){
                     return bytesWritten;
                 }
+                
             }
         }
     }
