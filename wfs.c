@@ -992,6 +992,15 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 }
                 for (int j = 0; j < charsToRead; j++){
                     // write from buf to file
+                    if (fwrite(buf, 1, 1, disk_img) != 1) {
+                        printf("error writing to file in write\n");
+                        return bytesWritten;
+                    }
+                    bytesWritten += 1;
+                    buf += 1; // is this correct behavior for a pointer?
+                }
+                if (bytesWritten == size){
+                    return bytesWritten;
                 }
             }
         }
@@ -999,12 +1008,40 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // if there is still work to be done and we have no more datablocks to write to -> allocate new ones
     // allocate new datablock(s)?
     // while(still data to write) {}
-    // allocateFileDatablock(&inode); // mutates inode with new offsets in blocks array
-    // write to newly allocated datablock
-
-    // write updated inode to file
-
-
+    while (bytesWritten < size){
+        int datablockIdx = allocateFileDatablock(&inode); // mutates inode with new offsets in blocks array
+        int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+        if (datablockIdx < 0){
+            return datablockIdx; // do we return bytesWritten instead?
+        }
+        // write updated inode to file
+        int fileInodeOffset = superblock.i_blocks_ptr + (traversalResult * BLOCK_SIZE);
+        fseek(disk_img, fileInodeOffset, SEEK_SET);
+        if (fwrite(&inode, sizeof(struct wfs_inode), 1, disk_img) != 1){
+            printf("error writing file inode\n");
+            return bytesWritten;
+        }
+        // write to newly allocated datablock
+        int bytesToWrite = 0;
+        if (BLOCK_SIZE < (size - bytesWritten)){
+            bytesToWrite = BLOCK_SIZE;
+        }else{
+            bytesToWrite = size - bytesWritten;
+        }
+        fseek(disk_img, datablockOffset, SEEK_SET);
+        for (int j = 0; j < bytesToWrite; j++){
+            // write from buf to file
+            if (fwrite(buf, 1, 1, disk_img) != 1) {
+                printf("error writing to file in write\n");
+                return bytesWritten;
+            }
+            bytesWritten += 1;
+            buf += 1; // is this correct behavior for a pointer?
+            }
+            if (bytesWritten == size){
+                return bytesWritten;
+            }
+    }
     printf("Exiting wfs_write\n\n");
     return bytesWritten;
 }
