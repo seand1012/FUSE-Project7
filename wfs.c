@@ -1010,6 +1010,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // while(still data to write) {}
     while (bytesWritten < size){
         int datablockIdx = allocateFileDatablock(&inode); // mutates inode with new offsets in blocks array
+        printf("allocated datablock in bitmap for writing: %d\n", datablockIdx);
         int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
         if (datablockIdx < 0){
             return datablockIdx; // do we return bytesWritten instead?
@@ -1028,9 +1029,11 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         }else{
             bytesToWrite = size - bytesWritten;
         }
+        printf("bytes to write for this block: %d\n", bytesToWrite);
         fseek(disk_img, datablockOffset, SEEK_SET);
         for (int j = 0; j < bytesToWrite; j++){
             // write from buf to file
+            printf("buf: %s\n", buf);
             if (fwrite(buf, 1, 1, disk_img) != 1) {
                 printf("error writing to file in write\n");
                 return bytesWritten;
