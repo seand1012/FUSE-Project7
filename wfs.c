@@ -979,10 +979,11 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
         if (inode.blocks[i] != 0){
             // valid block
+            printf("offset for this datablock %ld\n", inode.blocks[i]);
             currentValidBlock += 1;
             if (currentValidBlock >= start_block){
+                printf("writing to block %d\n", i);
                 // start writing at start_block_offset
-                fseek(disk_img, inode.blocks[i] + start_offset_block, SEEK_SET);
                 // write char by char, if we write "size" bytes, exit
                 int charsToRead = 0;
                 if ((BLOCK_SIZE - start_offset_block) < (size-bytesWritten)){
@@ -992,7 +993,10 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                     charsToRead = size - bytesWritten;
                     printf("(BLOCK_SIZE - start_offset_block) >= (size-bytesWritten):  %d\n", charsToRead);
                 }
+                printf("seeking to: %ld\n", inode.blocks[i] + start_offset_block);
+                fseek(disk_img, inode.blocks[i] + start_offset_block, SEEK_SET);
                 for (int j = 0; j < charsToRead; j++){
+                    printf("buf: %s\n", buf);
                     // write from buf to file
                     if (fwrite(buf, 1, 1, disk_img) != 1) {
                         printf("error writing to file in write\n");
@@ -1003,9 +1007,9 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 }
                 start_offset_block = 0;
                 if (bytesWritten == size){
+                    printf("wrote %d bytes\n", bytesWritten);
                     return bytesWritten;
                 }
-                
             }
         }
     }
