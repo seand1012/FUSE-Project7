@@ -826,7 +826,7 @@ static int wfs_unlink(const char* path){
             int dataIdx = (offset - superblock.d_blocks_ptr) / BLOCK_SIZE;
             // indirect block case:
             if (i == N_BLOCKS-1){
-                clearIndirectBlock(dataIdx);
+                clearIndirectBlock(dataIdx); // will clear our indirect block (just the offsets/pointers inside and free those up in bitmap)
             }
             // remove from data bitmap
             if (removeDataBitmap(dataIdx) != 0){
@@ -948,10 +948,10 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         return -1;
     }
     // go to datablocks for this file and read them into the buffer ("size" bytes)
-    if (offset > (BLOCK_SIZE * N_BLOCKS)){ // TODO: fix because offset could be larger than 4096 w indirect blocks 
-        printf("not a valid offset\n");
-        return -1;
-    }
+    // if (offset > (BLOCK_SIZE * N_BLOCKS)){ // TODO: fix because offset could be larger than 4096 w indirect blocks 
+    //     printf("not a valid offset\n");
+    //     return -1;
+    // }
     int numValidBlocks = getFileSize(&inode);
     if (offset > numValidBlocks * BLOCK_SIZE){
         return -1;
@@ -971,6 +971,9 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         }
         int datablockOffset = inode.blocks[i];
         if (datablockOffset != 0){
+            if (i == N_BLOCKS - 1){
+                // TODO indirect block, special read case
+            }
             curBlock += 1;
             if (curBlock >= start_block){
                 // start reading from this block
@@ -1065,6 +1068,9 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
         if (inode.blocks[i] != 0){
             // valid block
+            if (i == N_BLOCKS - 1){
+                // TODO indirect block, write to it
+            }
             printf("offset for this datablock %ld\n", inode.blocks[i]);
             currentValidBlock += 1;
             if (currentValidBlock >= start_block){
