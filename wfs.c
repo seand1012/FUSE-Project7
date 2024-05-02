@@ -732,7 +732,25 @@ int initIndirectBlock(int datablockIdx){
 */
 int clearIndirectBlock(int datablockIdx){
     // remove valid entries/offsets from data bitmap
-    return -1;
+    int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+    off_t emptyOffset;
+    fseek(disk_img, datablockOffset, SEEK_SET);
+    // read all offsets, calculate their idx in bitmap and remove
+    for (int i = 0; i < (BLOCK_SIZE / sizeof(off_t)); i++){
+        if (fread(&emptyOffset, sizeof(off_t), 1, disk_img) != 1){
+            printf("error initializing indirect block with empty offsets\n");
+            return -1;
+        }
+        if (emptyOffset != 0){
+            // find idx in bitmap and remove
+            int bitmapIdx = (emptyOffset - superblock.d_blocks_ptr) / BLOCK_SIZE;
+            if (removeDataBitmap(bitmapIdx) < 0){
+                printf("error removing %d idx from databitmap\n");
+            }
+        }
+    }
+
+    return 0;
 }
 /*
     helper method that will insert into our indirect block
