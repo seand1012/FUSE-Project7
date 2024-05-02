@@ -919,7 +919,6 @@ int getFileSize(struct wfs_inode* inode){
     int countDatablocks = 0;
     for (int i = 0; i < N_BLOCKS; i++){
         if (inode->blocks[i] != 0){
-            countDatablocks += 1;
             if (i == N_BLOCKS - 1){
                 fseek(disk_img, inode->blocks[i], SEEK_SET);
                 // read all off_t's in this datablock (this is our indirect block)
@@ -932,6 +931,8 @@ int getFileSize(struct wfs_inode* inode){
                         countDatablocks += 1;
                     }
                 }
+            }else{
+                countDatablocks += 1;
             }
         }
     }
@@ -984,7 +985,6 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         }
         int datablockOffset = inode.blocks[i];
         if (datablockOffset != 0){
-            curBlock += 1;
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, special read case
                 // if offset != 0 += curBlock
@@ -1026,6 +1026,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                 }
             }
             else{
+                curBlock += 1;
                 if (curBlock >= start_block){
                     // start reading from this block
                     int bytesLeftToRead = size - bytesRead;
@@ -1051,8 +1052,6 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                     // start_block += 1;
                 }
             }
-            
-            
         }
     }
     // start at "offset bytes into the file"
@@ -1082,14 +1081,24 @@ int allocateFileDatablock(struct wfs_inode* inode){
         int result = insertIndirectBlock(indirectBlockIdx);
         return result;
     }
-    // is there space in data bitmap?
-    int datablockIdx = insertDataBitmap();
-    if (datablockIdx < 0){ 
+    else if (insertIdx == N_BLOCKS - 1){
+        int indirectBlockIdx = insertDataBitmap();
+        if (indirectBlockIdx < 0){
+            return indirectBlockIdx;
+        }
+        initIndirectBlock(indirectBlockIdx);
+        int result = insertIndirectBlock(indirectBlockIdx);
+        return result;
+    }else{
+        // is there space in data bitmap?
+        int datablockIdx = insertDataBitmap();
+        if (datablockIdx < 0){ 
+            return datablockIdx;
+        }
+        off_t datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+        inode->blocks[insertIdx] = datablockOffset;
         return datablockIdx;
     }
-    off_t datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
-    inode->blocks[insertIdx] = datablockOffset;
-    return datablockIdx;
 }
 /*
     returns number of bytes written
@@ -1108,7 +1117,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     int start_offset_block = offset % BLOCK_SIZE;
     printf("start block: %d , offset into block: %d\n", start_block, start_offset_block);
     
-    disk_img = fopen(disk_path, "r+"); // open file for reading
+    disk_img = fopen(disk_path, "r+"); // open file for reading/writing
     if (!disk_img){
         printf("ERROR opening disk image in write\n");
         return 0;
@@ -1116,18 +1125,13 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     int bytesWritten = 0;
     int fileSizeDatablocks = getFileSize(&inode);
     printf("datablocks to go through: %d\n", fileSizeDatablocks);
-    // if (fileSizeDatablocks < size / BLOCK_SIZE){
-    //     // we need to allocate more space
-    // }
     int currentValidBlock = -1;
     // write as much as you can up to "size" bytes, return error if you run out of space, write from buffer into datablocks
-    // TODO implement case where i = N_BLOCKS-1, this is a indirect block that holds pointers/offsets to other datablocks
     // use up 7 blocks, eigth is a special case that we have to handle
     for (int i = 0; i < N_BLOCKS; i++){
         // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
         if (inode.blocks[i] != 0){
             // valid block
-            currentValidBlock += 1;
             printf("offset for this datablock %ld\n", inode.blocks[i]);
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, write to it
@@ -1175,6 +1179,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 }
                 
             }else{
+                currentValidBlock += 1;
                 if (currentValidBlock >= start_block){
                     printf("writing to block %d\n", i);
                     // start writing at start_block_offset
@@ -1225,10 +1230,6 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
         if (datablockIdx < 0){
             return datablockIdx; // do we return bytesWritten instead?
-        }
-        // special case where this is our 8th insert (indirect block case)
-        if (fileSizeDatablocks == N_BLOCKS){
-            initIndirectBlock(datablockIdx);
         }
         
         // write updated inode to file
