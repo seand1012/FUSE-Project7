@@ -711,6 +711,30 @@ int clearDatablock(int datablockIdx){
     return 0;
 }
 /*
+    will create our indirect block full of empty offsets (0 values)
+    ultimately these pointers/offsets will point to other datablocks
+    assumes "datablockIdx" is already valid and allocated in our data bitmap
+*/
+int initIndirectBlock(int datablockIdx){
+    return -1;
+}
+/*
+    will free the offsets/pointer to datablocks in our indirect block but not the indirect block itself. unlink will do that for us
+*/
+int clearIndirectBlock(int datablockIdx){
+    // remove valid entries/offsets from data bitmap
+    return -1;
+}
+/*
+    helper method that will insert into our indirect block
+    assumes this datablock is already initialized using "initIndirectBlock"
+*/
+int insertIndirectBlock(int datablockIdx){
+    // first need to ensure that there is space in our data bitmap
+    // find first open offset (offset == 0) to perform insert. inserted item should be an off_t to a datablock
+    return -1;
+}
+/*
     removes a file. if we have hard links, or special nodes behavior could be different
 */
 static int wfs_unlink(const char* path){
@@ -750,6 +774,10 @@ static int wfs_unlink(const char* path){
         if (offset != 0) {
             // find correspoding idx in databitmap
             int dataIdx = (offset - superblock.d_blocks_ptr) / BLOCK_SIZE;
+            // indirect block case:
+            if (i == N_BLOCKS-1){
+                clearIndirectBlock(dataIdx);
+            }
             // remove from data bitmap
             if (removeDataBitmap(dataIdx) != 0){
                 printf("error removing from databitmap\n");
