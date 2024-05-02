@@ -758,8 +758,31 @@ int clearIndirectBlock(int datablockIdx){
 */
 int insertIndirectBlock(int datablockIdx){
     // first need to ensure that there is space in our data bitmap
+    int indirectBlockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+    int dataIdx = insertDataBitmap();
+    if (dataIdx < 0){
+        return dataIdx; // could be -ENOSPC
+    }
+    off_t offsetToInsert = superblock.d_blocks_ptr + (dataIdx * BLOCK_SIZE);
     // find first open offset (offset == 0) to perform insert. inserted item should be an off_t to a datablock
-    return -1;
+    fseek(disk_img, indirectBlockOffset, SEEK_SET);
+    // read all offsets, calculate their idx in bitmap and remove
+    off_t currentOffset;
+    for (int i = 0; i < (BLOCK_SIZE / sizeof(off_t)); i++){
+        if (fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
+            printf("error initializing indirect block with empty offsets\n");
+            return -1;
+        }
+        if (currentOffset == 0){
+            // insert into this offset
+            fseek(disk_img, indirectBlockOffset + (i * sizeof(off_t)), SEEK_SET);
+            if (fwrite(offsetToInsert, sizeof(off_t), 1, disk_img) != 1){
+                printf("error writing offset into indirect datablock\n");
+                return -1;
+            }
+        }
+    }
+    return 0;
 }
 /*
     removes a file. if we have hard links, or special nodes behavior could be different
