@@ -725,7 +725,7 @@ int initIndirectBlock(int datablockIdx){
             return -1;
         }
     }
-    return 0;
+    return datablockIdx;
 }
 /*
     will free the offsets/pointer to datablocks in our indirect block but not the indirect block itself. unlink will do that for us
@@ -782,7 +782,7 @@ int insertIndirectBlock(int datablockIdx){
             }
         }
     }
-    return 0;
+    return dataIdx;
 }
 /*
     removes a file. if we have hard links, or special nodes behavior could be different
@@ -920,6 +920,19 @@ int getFileSize(struct wfs_inode* inode){
     for (int i = 0; i < N_BLOCKS; i++){
         if (inode->blocks[i] != 0){
             countDatablocks += 1;
+            if (i == N_BLOCKS - 1){
+                fseek(disk_img, inode->blocks[i], SEEK_SET);
+                // read all off_t's in this datablock (this is our indirect block)
+                off_t curOffset;
+                for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
+                    if (fread(&curOffset, sizeof(off_t), 1, disk_img) != 1){
+                        printf("error reading offsets in indirect block\n");
+                    }
+                    if (curOffset != 0) {
+                        countDatablocks += 1;
+                    }
+                }
+            }
         }
     }
     return countDatablocks;
