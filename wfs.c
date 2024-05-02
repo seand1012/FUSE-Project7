@@ -720,7 +720,7 @@ int initIndirectBlock(int datablockIdx){
     off_t emptyOffset = 0;
     fseek(disk_img, datablockOffset, SEEK_SET);
     for (int i = 0; i < (BLOCK_SIZE / sizeof(off_t)); i++){
-        if (fwrite(emptyOffset, sizeof(off_t), 1, disk_img) != 1){
+        if (fwrite(&emptyOffset, sizeof(off_t), 1, disk_img) != 1){
             printf("error initializing indirect block with empty offsets\n");
             return -1;
         }
@@ -745,7 +745,7 @@ int clearIndirectBlock(int datablockIdx){
             // find idx in bitmap and remove
             int bitmapIdx = (emptyOffset - superblock.d_blocks_ptr) / BLOCK_SIZE;
             if (removeDataBitmap(bitmapIdx) < 0){
-                printf("error removing %d idx from databitmap\n");
+                printf("error removing %d idx from databitmap\n", bitmapIdx);
             }
         }
     }
@@ -776,7 +776,7 @@ int insertIndirectBlock(int datablockIdx){
         if (currentOffset == 0){
             // insert into this offset
             fseek(disk_img, indirectBlockOffset + (i * sizeof(off_t)), SEEK_SET);
-            if (fwrite(offsetToInsert, sizeof(off_t), 1, disk_img) != 1){
+            if (fwrite(&offsetToInsert, sizeof(off_t), 1, disk_img) != 1){
                 printf("error writing offset into indirect datablock\n");
                 return -1;
             }
@@ -1034,7 +1034,11 @@ int allocateFileDatablock(struct wfs_inode* inode){
         }
     }
     if (insertIdx < 0){ // no more space to write
-        return -ENOSPC;
+        // TODO try to use indirect block before returning no space
+        int indirectBlockOffset = inode->blocks[N_BLOCKS-1];
+        int indirectBlockIdx = (indirectBlockOffset - superblock.d_blocks_ptr) / BLOCK_SIZE;
+        int result = insertIndirectBlock(indirectBlockIdx);
+        return result;
     }
     // is there space in data bitmap?
     int datablockIdx = insertDataBitmap();
@@ -1081,47 +1085,90 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
         if (inode.blocks[i] != 0){
             // valid block
+            currentValidBlock += 1;
+            printf("offset for this datablock %ld\n", inode.blocks[i]);
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, write to it
-            }
-            printf("offset for this datablock %ld\n", inode.blocks[i]);
-            currentValidBlock += 1;
-            if (currentValidBlock >= start_block){
-                printf("writing to block %d\n", i);
-                // start writing at start_block_offset
-                // write char by char, if we write "size" bytes, exit
-                int charsToRead = 0;
-                if ((BLOCK_SIZE - start_offset_block) < (size-bytesWritten)){
-                    charsToRead = BLOCK_SIZE - start_offset_block;
-                    printf("(BLOCK_SIZE - start_offset_block) < (size-bytesWritten):  %d\n", charsToRead);
-                }else{
-                    charsToRead = size - bytesWritten;
-                    printf("(BLOCK_SIZE - start_offset_block) >= (size-bytesWritten):  %d\n", charsToRead);
+                // find valid blocks
+                off_t currentOffset = 0;
+                for (int j = 0; j < (BLOCK_SIZE/sizeof(off_t)); j++){
+                    // read in offset
+                    fseek(disk_img, inode.blocks[i], SEEK_SET);
+                    if (fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
+                        printf("error reading from indirect block\n");
+                        return bytesWritten;
+                    }
+                    if (currentOffset != 0){  // is it valid
+                        currentValidBlock += 1;
+                        if (currentValidBlock >= start_block) {
+                             // calc how many bytes to write to it
+                            int charsToRead = 0;
+                            if ((BLOCK_SIZE - start_offset_block) < (size-bytesWritten)){
+                                charsToRead = BLOCK_SIZE - start_offset_block;
+                            }else{
+                                charsToRead = size - bytesWritten;
+                            }
+                            printf("chars to read: %d\n", charsToRead);
+                            // seek + write
+                            fseek(disk_img, currentOffset + start_offset_block, SEEK_SET);
+                            // write byte by byte
+                            for (int x = 0; x < charsToRead; x++){
+                                if (fwrite(buf, 1, 1, disk_img) != 1) {
+                                    printf("error writing to file in write\n");
+                                    fclose(disk_img);
+                                    return bytesWritten;
+                                }
+                                bytesWritten += 1;
+                                buf += 1;
+                            }
+                            // are we done writing?
+                            start_offset_block = 0;
+                            if (bytesWritten == size){
+                                printf("wrote %d bytes\n", bytesWritten);
+                                fclose(disk_img);
+                                return bytesWritten;
+                            }
+                        }
+                    }
                 }
-                printf("seeking to: %ld\n", inode.blocks[i] + start_offset_block);
-                fseek(disk_img, inode.blocks[i] + start_offset_block, SEEK_SET);
-                for (int j = 0; j < charsToRead; j++){
-                    printf("buf: %s\n", buf);
-                    // write from buf to file
-                    if (fwrite(buf, 1, 1, disk_img) != 1) {
-                        printf("error writing to file in write\n");
+                
+            }else{
+                if (currentValidBlock >= start_block){
+                    printf("writing to block %d\n", i);
+                    // start writing at start_block_offset
+                    // write char by char, if we write "size" bytes, exit
+                    int charsToRead = 0;
+                    if ((BLOCK_SIZE - start_offset_block) < (size-bytesWritten)){
+                        charsToRead = BLOCK_SIZE - start_offset_block;
+                        printf("(BLOCK_SIZE - start_offset_block) < (size-bytesWritten):  %d\n", charsToRead);
+                    }else{
+                        charsToRead = size - bytesWritten;
+                        printf("(BLOCK_SIZE - start_offset_block) >= (size-bytesWritten):  %d\n", charsToRead);
+                    }
+                    printf("seeking to: %ld\n", inode.blocks[i] + start_offset_block);
+                    fseek(disk_img, inode.blocks[i] + start_offset_block, SEEK_SET);
+                    for (int j = 0; j < charsToRead; j++){
+                        printf("buf: %s\n", buf);
+                        // write from buf to file
+                        if (fwrite(buf, 1, 1, disk_img) != 1) {
+                            printf("error writing to file in write\n");
+                            fclose(disk_img);
+                            return bytesWritten;
+                        }
+                        bytesWritten += 1;
+                        buf += 1; // is this correct behavior for a pointer?
+                    }
+                    start_offset_block = 0;
+                    if (bytesWritten == size){
+                        printf("wrote %d bytes\n", bytesWritten);
                         fclose(disk_img);
                         return bytesWritten;
                     }
-                    bytesWritten += 1;
-                    buf += 1; // is this correct behavior for a pointer?
+                    else if(bytesWritten > size){
+                        fclose(disk_img);
+                        return -ENOSPC;
+                    }
                 }
-                start_offset_block = 0;
-                if (bytesWritten == size){
-                    printf("wrote %d bytes\n", bytesWritten);
-                    fclose(disk_img);
-                    return bytesWritten;
-                }
-                else if(bytesWritten > size){
-                    fclose(disk_img);
-                    return -ENOSPC;
-                }
-                
             }
         }
     }
@@ -1131,11 +1178,17 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // TODO: handle case where you are allocating the eighth datablock for this file (this is the indirect block)
     while (bytesWritten < size){
         int datablockIdx = allocateFileDatablock(&inode); // mutates inode with new offsets in blocks array
+        fileSizeDatablocks += 1;
         printf("allocated datablock in bitmap for writing: %d\n", datablockIdx);
         int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
         if (datablockIdx < 0){
             return datablockIdx; // do we return bytesWritten instead?
         }
+        // special case where this is our 8th insert (indirect block case)
+        if (fileSizeDatablocks == N_BLOCKS){
+            initIndirectBlock(datablockIdx);
+        }
+        
         // write updated inode to file
         int fileInodeOffset = superblock.i_blocks_ptr + (traversalResult * BLOCK_SIZE);
         fseek(disk_img, fileInodeOffset, SEEK_SET);
