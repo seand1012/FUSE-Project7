@@ -1093,7 +1093,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 off_t currentOffset = 0;
                 for (int j = 0; j < (BLOCK_SIZE/sizeof(off_t)); j++){
                     // read in offset
-                    fseek(disk_img, inode.blocks[i], SEEK_SET);
+                    fseek(disk_img, inode.blocks[i] + (j * sizeof(off_t)), SEEK_SET);
                     if (fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("error reading from indirect block\n");
                         return bytesWritten;
