@@ -1,3 +1,6 @@
 disk.img
 mkfs
 wfs
+disk-one-file.img
+disk-one-dir.img
+mnt

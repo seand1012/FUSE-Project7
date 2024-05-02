@@ -1010,6 +1010,10 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                     printf("wrote %d bytes\n", bytesWritten);
                     return bytesWritten;
                 }
+                else if(bytesWritten > size){
+                    return -ENOSPC;
+                }
+                
             }
         }
     }
