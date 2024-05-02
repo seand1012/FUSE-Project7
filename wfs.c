@@ -713,10 +713,19 @@ int clearDatablock(int datablockIdx){
 /*
     will create our indirect block full of empty offsets (0 values)
     ultimately these pointers/offsets will point to other datablocks
-    assumes "datablockIdx" is already valid and allocated in our data bitmap
+    assumes "datablockIdx" is already valid and allocated in our data bitmap and that the file is open for reading/writing
 */
 int initIndirectBlock(int datablockIdx){
-    return -1;
+    int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+    off_t emptyOffset = 0;
+    fseek(disk_img, datablockOffset, SEEK_SET);
+    for (int i = 0; i < (BLOCK_SIZE / sizeof(off_t)); i++){
+        if (fwrite(emptyOffset, sizeof(off_t), 1, disk_img) != 1){
+            printf("error initializing indirect block with empty offsets\n");
+            return -1;
+        }
+    }
+    return 0;
 }
 /*
     will free the offsets/pointer to datablocks in our indirect block but not the indirect block itself. unlink will do that for us
