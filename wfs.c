@@ -984,39 +984,75 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         }
         int datablockOffset = inode.blocks[i];
         if (datablockOffset != 0){
+            curBlock += 1;
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, special read case
                 // if offset != 0 += curBlock
                 off_t currentOffset;
+                
                 for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
-                    fseek(disk_img, currentOffset, SEEK_SET);
+                    fseek(disk_img, inode.blocks[i], SEEK_SET);
+                    if(fread(&currentOffset, sizeof(off_t) + (j * sizeof(off_t)), 1, disk_img) != 1){
+                        printf("Failed to read from indirect block\n");
+                        fclose(disk_img);
+                        return bytesRead;
+                    }
                     
-                }
-            }
-            curBlock += 1;
-            if (curBlock >= start_block){
-                // start reading from this block
-                int bytesLeftToRead = size - bytesRead;
-                size_t bytesToReadFromBlock = (bytesLeftToRead > (BLOCK_SIZE - start_offset_block)) ? (BLOCK_SIZE - start_offset_block) : bytesLeftToRead;
+                    if(currentOffset != 0){
+                        curBlock++;
+                        if(curBlock >= start_block){
+                            int bytesLeftToRead = size - bytesRead;
+                            size_t bytesToReadFromBlock = (bytesLeftToRead > (BLOCK_SIZE - start_offset_block)) ? (BLOCK_SIZE - start_offset_block) : bytesLeftToRead;
+                            fseek(disk_img, currentOffset + start_offset_block, SEEK_SET);
 
-                // read contiguously from this data block starting at "datablockOffset + start, after reading from first block start is 0?
-                fseek(disk_img, datablockOffset + start_offset_block, SEEK_SET);
-                // read character by character until we reach EOF or BLOCK_SIZE or size, write chars to buf
-                for (int j = 0; j < bytesToReadFromBlock; j++){
-                    size_t bytesReadFromFile = fread(buf, 1, 1, disk_img);
-                    if (bytesReadFromFile <= 0) {
-                        break;
-                    }
-                    buf += 1;
-                    bytesLeftToRead -= 1;
-                    bytesRead += 1;
-                    if (bytesRead == size){
-                        break;
+                            for(int k = 0; k < bytesToReadFromBlock; k++){
+                                if(fread(buf, 1, 1, disk_img) != 1){
+                                    printf("Failed to read from indirect block\n");
+                                    fclose(disk_img);
+                                    return bytesRead;
+                                }
+                                buf += 1;
+                                bytesLeftToRead -= 1;
+                                bytesRead += 1;
+                                
+                            }
+                            start_offset_block = 0;
+                            if (bytesRead == size){
+                                fclose(disk_img);
+                                return bytesRead;
+                            }
+                        }
                     }
                 }
-                start_offset_block = 0;
-                // start_block += 1;
             }
+            else{
+                if (curBlock >= start_block){
+                    // start reading from this block
+                    int bytesLeftToRead = size - bytesRead;
+                    size_t bytesToReadFromBlock = (bytesLeftToRead > (BLOCK_SIZE - start_offset_block)) ? (BLOCK_SIZE - start_offset_block) : bytesLeftToRead;
+
+                    // read contiguously from this data block starting at "datablockOffset + start, after reading from first block start is 0?
+                    fseek(disk_img, datablockOffset + start_offset_block, SEEK_SET);
+                    // read character by character until we reach EOF or BLOCK_SIZE or size, write chars to buf
+                    for (int j = 0; j < bytesToReadFromBlock; j++){
+                        size_t bytesReadFromFile = fread(buf, 1, 1, disk_img);
+                        if (bytesReadFromFile <= 0) {
+                            break;
+                        }
+                        buf += 1;
+                        bytesLeftToRead -= 1;
+                        bytesRead += 1;
+                        if (bytesRead == size){
+                            fclose(disk_img);
+                            return bytesRead;
+                        }
+                    }
+                    start_offset_block = 0;
+                    // start_block += 1;
+                }
+            }
+            
+            
         }
     }
     // start at "offset bytes into the file"
