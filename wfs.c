@@ -991,8 +991,8 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                 off_t currentOffset;
                 
                 for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
-                    fseek(disk_img, inode.blocks[i], SEEK_SET);
-                    if(fread(&currentOffset, sizeof(off_t) + (j * sizeof(off_t)), 1, disk_img) != 1){
+                    fseek(disk_img, inode.blocks[i] + (j * sizeof(off_t)), SEEK_SET);
+                    if(fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("Failed to read from indirect block\n");
                         fclose(disk_img);
                         return bytesRead;
@@ -1177,7 +1177,6 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                         }
                     }
                 }
-                
             }else{
                 currentValidBlock += 1;
                 if (currentValidBlock >= start_block){
@@ -1224,14 +1223,11 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // while(still data to write) {}
     // TODO: handle case where you are allocating the eighth datablock for this file (this is the indirect block)
     while (bytesWritten < size){
-        int datablockIdx = allocateFileDatablock(&inode); // mutates inode with new offsets in blocks array
-        fileSizeDatablocks += 1;
-        printf("allocated datablock in bitmap for writing: %d\n", datablockIdx);
-        int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE);
+        int datablockIdx = allocateFileDatablock(&inode); // returns a datablock to write to or -ENOSPC
+        
         if (datablockIdx < 0){
             return datablockIdx; // do we return bytesWritten instead?
         }
-        
         // write updated inode to file
         int fileInodeOffset = superblock.i_blocks_ptr + (traversalResult * BLOCK_SIZE);
         fseek(disk_img, fileInodeOffset, SEEK_SET);
@@ -1240,6 +1236,9 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
             fclose(disk_img);
             return bytesWritten;
         }
+
+        printf("allocated datablock in bitmap for writing: %d\n", datablockIdx);
+        int datablockOffset = superblock.d_blocks_ptr + (datablockIdx * BLOCK_SIZE); // calc offset to write to
         // write to newly allocated datablock
         int bytesToWrite = 0;
         if (BLOCK_SIZE < (size - bytesWritten)){
@@ -1259,12 +1258,12 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
             }
             bytesWritten += 1;
             buf += 1; // is this correct behavior for a pointer?
-            }
-            if (bytesWritten == size){
-                printf("Exiting wfs_write %d\n\n", bytesWritten);
-                fclose(disk_img);
-                return bytesWritten;
-            }
+        }
+        if (bytesWritten == size){
+            printf("Exiting wfs_write %d\n\n", bytesWritten);
+            fclose(disk_img);
+            return bytesWritten;
+        }
     }
     printf("Exiting wfs_write %d\n\n", bytesWritten);
     fclose(disk_img);
