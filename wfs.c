@@ -1000,6 +1000,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                     // write from buf to file
                     if (fwrite(buf, 1, 1, disk_img) != 1) {
                         printf("error writing to file in write\n");
+                        fclose(disk_img);
                         return bytesWritten;
                     }
                     bytesWritten += 1;
@@ -1008,9 +1009,11 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 start_offset_block = 0;
                 if (bytesWritten == size){
                     printf("wrote %d bytes\n", bytesWritten);
+                    fclose(disk_img);
                     return bytesWritten;
                 }
                 else if(bytesWritten > size){
+                    fclose(disk_img);
                     return -ENOSPC;
                 }
                 
@@ -1032,6 +1035,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         fseek(disk_img, fileInodeOffset, SEEK_SET);
         if (fwrite(&inode, sizeof(struct wfs_inode), 1, disk_img) != 1){
             printf("error writing file inode\n");
+            fclose(disk_img);
             return bytesWritten;
         }
         // write to newly allocated datablock
@@ -1048,6 +1052,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
             printf("buf: %s\n", buf);
             if (fwrite(buf, 1, 1, disk_img) != 1) {
                 printf("error writing to file in write\n");
+                fclose(disk_img);
                 return bytesWritten;
             }
             bytesWritten += 1;
@@ -1055,10 +1060,12 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
             }
             if (bytesWritten == size){
                 printf("Exiting wfs_write %d\n\n", bytesWritten);
+                fclose(disk_img);
                 return bytesWritten;
             }
     }
     printf("Exiting wfs_write %d\n\n", bytesWritten);
+    fclose(disk_img);
     return bytesWritten;
 }
 
