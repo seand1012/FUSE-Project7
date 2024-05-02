@@ -744,6 +744,7 @@ static int wfs_unlink(const char* path){
         return -ENOENT;
     }
     // remove datablocks that belong to this inode
+    // TODO: handle case where i = N_BLOCKS-1, this is a offset to a datablock holding more datablocks. free all inner datablocks and then free the indirect block
     for (int i = 0; i < N_BLOCKS; i++){
         off_t offset = node_to_remove.blocks[i];
         if (offset != 0) {
@@ -813,7 +814,6 @@ static int wfs_rmdir(const char* path){
                 fclose(disk_img);
                 return -1;
             }
-            // printf("\n\nbitmap after removing %d\n\n", dataIdx);
             // do we also need to clear datablocks out? after removing from databitmap
             clearDatablock(dataIdx);
             
@@ -832,7 +832,11 @@ static int wfs_rmdir(const char* path){
     printf("Exiting wfs_rmdir\n\n");
     return 0;
 }
+/*
+    gets the file size (how many datablocks are allocated to this file's inode)
+*/
 int getFileSize(struct wfs_inode* inode){
+    // TODO: handle case where i = N_BLOCKS - 1. this is a pointer/offset to another datablock holding more offsets to additional datablocks that belong to this inode
     // go through datablocks and see which are being used or not being used
     int countDatablocks = 0;
     for (int i = 0; i < N_BLOCKS; i++){
@@ -865,8 +869,8 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         printf("ERROR opening disk image in wfs_getattr\n");
         return -1;
     }
-    // go to d atablocks for this file and read them into the buffer ("size" bytes)
-    if (offset > (BLOCK_SIZE * N_BLOCKS)){
+    // go to datablocks for this file and read them into the buffer ("size" bytes)
+    if (offset > (BLOCK_SIZE * N_BLOCKS)){ // TODO: fix because offset could be larger than 4096 w indirect blocks 
         printf("not a valid offset\n");
         return -1;
     }
@@ -882,6 +886,8 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
     int curBlock = -1;
     printf("searching %d through datablocks for this inode...\n", numValidBlocks);
     for (int i = 0; i < N_BLOCKS; i++){
+        // TODO: the block at N_BLOCKS - 1 is an indirect block -> means it point to a datablock that has pointers to other datablocks?
+        // so our indirect block is a datablock that holds 512/sizeof(off_t offset) pointers
         if (bytesRead == size){
             break;
         }
@@ -975,6 +981,8 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // }
     int currentValidBlock = -1;
     // write as much as you can up to "size" bytes, return error if you run out of space, write from buffer into datablocks
+    // TODO implement case where i = N_BLOCKS-1, this is a indirect block that holds pointers/offsets to other datablocks
+    // use up 7 blocks, eigth is a special case that we have to handle
     for (int i = 0; i < N_BLOCKS; i++){
         // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
         if (inode.blocks[i] != 0){
@@ -1023,6 +1031,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // if there is still work to be done and we have no more datablocks to write to -> allocate new ones
     // allocate new datablock(s)?
     // while(still data to write) {}
+    // TODO: handle case where you are allocating the eighth datablock for this file (this is the indirect block)
     while (bytesWritten < size){
         int datablockIdx = allocateFileDatablock(&inode); // mutates inode with new offsets in blocks array
         printf("allocated datablock in bitmap for writing: %d\n", datablockIdx);
