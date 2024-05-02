@@ -984,7 +984,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         }
         int datablockOffset = inode.blocks[i];
         if (datablockOffset != 0){
-            curBlock += 1;
+            
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, special read case
                 // if offset != 0 += curBlock
@@ -1026,6 +1026,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                 }
             }
             else{
+                curBlock += 1;
                 if (curBlock >= start_block){
                     // start reading from this block
                     int bytesLeftToRead = size - bytesRead;
