@@ -720,7 +720,7 @@ int initIndirectBlock(int datablockIdx){
     off_t emptyOffset = 0;
     fseek(disk_img, datablockOffset, SEEK_SET);
     for (int i = 0; i < (BLOCK_SIZE / sizeof(off_t)); i++){
-        if (fwrite(emptyOffset, sizeof(off_t), 1, disk_img) != 1){
+        if (fwrite(&emptyOffset, sizeof(off_t), 1, disk_img) != 1){
             printf("error initializing indirect block with empty offsets\n");
             return -1;
         }
@@ -745,7 +745,7 @@ int clearIndirectBlock(int datablockIdx){
             // find idx in bitmap and remove
             int bitmapIdx = (emptyOffset - superblock.d_blocks_ptr) / BLOCK_SIZE;
             if (removeDataBitmap(bitmapIdx) < 0){
-                printf("error removing %d idx from databitmap\n");
+                printf("error removing %d idx from databitmap\n", bitmapIdx);
             }
         }
     }
@@ -776,7 +776,7 @@ int insertIndirectBlock(int datablockIdx){
         if (currentOffset == 0){
             // insert into this offset
             fseek(disk_img, indirectBlockOffset + (i * sizeof(off_t)), SEEK_SET);
-            if (fwrite(offsetToInsert, sizeof(off_t), 1, disk_img) != 1){
+            if (fwrite(&offsetToInsert, sizeof(off_t), 1, disk_img) != 1){
                 printf("error writing offset into indirect datablock\n");
                 return -1;
             }
@@ -986,6 +986,12 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
         if (datablockOffset != 0){
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, special read case
+                // if offset != 0 += curBlock
+                off_t currentOffset;
+                for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
+                    fseek(disk_img, currentOffset, SEEK_SET);
+                    
+                }
             }
             curBlock += 1;
             if (curBlock >= start_block){
