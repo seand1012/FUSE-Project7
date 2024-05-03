@@ -78,8 +78,7 @@ int findChild(int parentInodeIdx, char* child){
     traversal method for 
 */
 int traversal(const char* path, struct wfs_inode* buf){
-    printf("In traversal\n");
-    printf("Path: %s\n", path);
+    printf("traversing Path: %s\n", path);
     disk_img = fopen(disk_path, "r");
     // print contents of superblock - should be at offset 0
     if (!disk_img){
@@ -94,7 +93,7 @@ int traversal(const char* path, struct wfs_inode* buf){
     char* prev = NULL;
     int currentNode = 0;
     while(token != NULL){
-        printf("token: %s\n", token);
+        // printf("token: %s\n", token);
         currentNode = findChild(currentNode, token);
         if (currentNode == -1){
             printf("path doesn't exist\n");
@@ -106,7 +105,7 @@ int traversal(const char* path, struct wfs_inode* buf){
         token = strtok(NULL, "/");
 
     }
-    printf("destination node: %s\n", prev);
+    // printf("destination node: %s\n", prev);
     int offset = superblock.i_blocks_ptr + (BLOCK_SIZE * currentNode);
     fseek(disk_img, offset, SEEK_SET);
     struct wfs_inode temp;
@@ -131,7 +130,7 @@ int traversal(const char* path, struct wfs_inode* buf){
         buf->uid = temp.uid;
     }
 
-    printf("exiting traversal\n");
+    printf("exiting traversal found %s\n", prev);
     fclose(disk_img);
     return currentNode;
 }
@@ -287,7 +286,7 @@ int initDirectoryDatablock(int idx){
 // this function assumes the file has already been opened for r/w ops
 int insertDataBitmap(){
     fseek(disk_img, superblock.d_bitmap_ptr, SEEK_SET);
-    for (int i = 0; i < (superblock.num_data_blocks / 32); i++){
+    for (int i = 0; i < (superblock.num_data_blocks / sizeof(unsigned int)); i++){
         // find open slot to flip bit to 1
         unsigned int dbm;
         if (fread(&dbm, sizeof(unsigned int), 1, disk_img) != 1){
@@ -302,7 +301,7 @@ int insertDataBitmap(){
                 // valid place to insert
                 setBit(&dbm, j); // set the jth bit to 1
                 fseek(disk_img, superblock.d_bitmap_ptr + (i * sizeof(unsigned int)), SEEK_SET);
-                if (fwrite(&dbm, sizeof(int), 1, disk_img) != 1){
+                if (fwrite(&dbm, sizeof(unsigned int), 1, disk_img) != 1){
                     printf("error writing to inode bitmap\n");
                     return -1;
                 }
@@ -939,7 +938,7 @@ int getFileSize(struct wfs_inode* inode){
                         printf("error reading offsets in indirect block\n");
                     }
                     if (curOffset != 0) {
-                        printf("curOffset: %ld\n", curOffset);
+                        // printf("curOffset: %ld\n", curOffset);
                         countDatablocks += 1;
                     }
                 }
@@ -1004,7 +1003,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                 off_t currentOffset;
                 printf("reading from indirect block: %d ld: %ld\n", datablockOffset, inode.blocks[i]);
                 for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
-                    printf("ld: %ld\n", inode.blocks[i] + (j * sizeof(off_t)));
+                    // printf("ld: %ld\n", inode.blocks[i] + (j * sizeof(off_t)));
                     fseek(disk_img, inode.blocks[i] + (j * sizeof(off_t)), SEEK_SET);
                     if(fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("Failed to read from indirect block\n");
@@ -1134,10 +1133,10 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     struct wfs_inode inode;
     // does file already exist? if it doesn't do we create it?
     int traversalResult = traversal(path, &inode);
-    if (traversalResult < 0) {
-        printf("file doesn't exist\n");
-        return -ENOENT;
-    }
+    // if (traversalResult < 0) {
+    //     printf("file doesn't exist\n");
+    //     return -ENOENT;
+    // }
     // do we have enough space?
     int start_block = offset / BLOCK_SIZE;
     int start_offset_block = offset % BLOCK_SIZE;
@@ -1158,21 +1157,21 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
         if (inode.blocks[i] != 0){
             // valid block
-            printf("offset for this datablock %ld\n", inode.blocks[i]);
+            // printf("offset for this datablock %ld\n", inode.blocks[i]);
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, write to it
                 // find valid blocks
                 off_t currentOffset = 0;
                 for (int j = 0; j < (BLOCK_SIZE/sizeof(off_t)); j++){
                     // read in offset
-                    printf("reading from indirect block starting at: %ld\n",inode.blocks[i] + (j *(sizeof(off_t))));
+                    // printf("reading from indirect block starting at: %ld\n",inode.blocks[i] + (j *(sizeof(off_t))));
                     fseek(disk_img, inode.blocks[i] + (j * sizeof(off_t)), SEEK_SET);
                     if (fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("error reading from indirect block\n");
                         return bytesWritten;
                     }
-                    printf("currentOffset to read from (indirect block offset pointer): %ld\n", currentOffset);
                     if (currentOffset != 0){  // is it valid
+                        // printf("currentOffset to read from (indirect block offset pointer): %ld\n", currentOffset);
                         currentValidBlock += 1;
                         if (currentValidBlock >= start_block) {
                              // calc how many bytes to write to it
@@ -1182,7 +1181,12 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                             }else{
                                 charsToRead = size - bytesWritten;
                             }
-                            printf("chars to read: %d\n", charsToRead);
+                            // fileSizeDatablocks++;
+                            // printf("filesizeDatablocks %d, numdatablocks: %ld\n", fileSizeDatablocks, superblock.num_data_blocks);
+                            // if (fileSizeDatablocks > superblock.num_data_blocks){
+                            //     return -ENOSPC;
+                            // }
+                            printf("chars to write: %d\n", charsToRead);
                             // seek + write
                             fseek(disk_img, currentOffset + start_offset_block, SEEK_SET);
                             // write byte by byte
@@ -1250,11 +1254,16 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
     // allocate new datablock(s)?
     // while(still data to write) {}
     // TODO: handle case where you are allocating the eighth datablock for this file (this is the indirect block)
+    printf("\nallocating new datablocks...\n\n\n\n");
     while (bytesWritten < size){
         int datablockIdx = allocateFileDatablock(&inode); // returns a datablock to write to or -ENOSPC
-        
         if (datablockIdx < 0){
             return datablockIdx; // do we return bytesWritten instead?
+        }
+        fileSizeDatablocks++;
+        printf("\n\nfilesizeDatablocks %d, numdatablocks: %ld\n", fileSizeDatablocks, superblock.num_data_blocks);
+        if (fileSizeDatablocks > superblock.num_data_blocks){
+            return -ENOSPC;
         }
         // write updated inode to file
         int fileInodeOffset = superblock.i_blocks_ptr + (traversalResult * BLOCK_SIZE);
