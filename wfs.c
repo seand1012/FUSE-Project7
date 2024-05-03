@@ -1012,8 +1012,8 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                 off_t currentOffset;
                 printf("reading from indirect block: %d ld: %ld\n", datablockOffset, inode.blocks[i]);
                 for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
-                    printf("ld: %ld\n", inode.blocks[i] + (j));
-                    fseek(disk_img, inode.blocks[i] + (j), SEEK_SET);
+                    printf("ld: %ld\n", inode.blocks[i] + (j * sizeof(off_t)));
+                    fseek(disk_img, inode.blocks[i] + (j * sizeof(off_t)), SEEK_SET);
                     if(fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("Failed to read from indirect block\n");
                         fclose(disk_img);
