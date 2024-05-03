@@ -789,7 +789,7 @@ int insertIndirectBlock(int datablockIdx){
             return dataIdx;
         }
     }
-    return dataIdx;
+    return -ENOSPC; // if we get past this loop, there is not space in our indirect block
 }
 /*
     removes a file. if we have hard links, or special nodes behavior could be different
