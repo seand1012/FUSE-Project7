@@ -482,10 +482,6 @@ static int wfs_mknod(const char* path, mode_t mode, dev_t dev){
     // result should hold parent inode of node we are looking to insert
     printf("second to last inode is: %d\n", result);
     // check if second to last inode already has a child matching this node-to-insert
-    // if (traversal(path, NULL) != -1){
-    //     printf("%s path already exists\n", path);
-    //     return -EEXIST;
-    // }
     disk_img = fopen(disk_path, "r+");
     // open file for r/w for bitmap ops and datablock/inode insert
     if (!disk_img){
@@ -580,10 +576,6 @@ static int wfs_mkdir(const char* path, mode_t mode){
     printf("second to last inode is: %d\n", result);
     // check if second to last inode already has a child matching this node-to-insert
     // could just call traversal again on the non-mutated path, if succesful, then file/dir already exists, return failure
-    // if (traversal(path, NULL) != -1){
-    //     printf("%s path already exists\n", path);
-    //     return -EEXIST;
-    // }
     disk_img = fopen(disk_path, "r+");
     // open file for r/w for bitmap ops and datablock/inode insert
     if (!disk_img){
