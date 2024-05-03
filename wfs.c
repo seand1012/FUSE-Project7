@@ -991,7 +991,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
                 off_t currentOffset;
                 
                 for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
-                    fseek(disk_img, inode.blocks[i] + (j * sizeof(off_t)), SEEK_SET);
+                    fseek(disk_img, inode.blocks[i] + (j), SEEK_SET);
                     if(fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("Failed to read from indirect block\n");
                         fclose(disk_img);
@@ -1074,6 +1074,7 @@ int allocateFileDatablock(struct wfs_inode* inode){
             break;
         }
     }
+    printf("inside allocateFileDatablock... insertIdx: %d\n", insertIdx);
     if (insertIdx < 0){ // no more space to write
         // TODO try to use indirect block before returning no space
         int indirectBlockOffset = inode->blocks[N_BLOCKS-1];
@@ -1086,6 +1087,8 @@ int allocateFileDatablock(struct wfs_inode* inode){
         if (indirectBlockIdx < 0){
             return indirectBlockIdx;
         }
+        off_t datablockOffset = superblock.d_blocks_ptr + (indirectBlockIdx * BLOCK_SIZE);
+        inode->blocks[insertIdx] = datablockOffset;
         initIndirectBlock(indirectBlockIdx);
         int result = insertIndirectBlock(indirectBlockIdx);
         return result;
@@ -1139,7 +1142,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 off_t currentOffset = 0;
                 for (int j = 0; j < (BLOCK_SIZE/sizeof(off_t)); j++){
                     // read in offset
-                    fseek(disk_img, inode.blocks[i] + (j * sizeof(off_t)), SEEK_SET);
+                    fseek(disk_img, inode.blocks[i] + (j), SEEK_SET);
                     if (fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("error reading from indirect block\n");
                         return bytesWritten;
@@ -1194,7 +1197,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                     printf("seeking to: %ld\n", inode.blocks[i] + start_offset_block);
                     fseek(disk_img, inode.blocks[i] + start_offset_block, SEEK_SET);
                     for (int j = 0; j < charsToRead; j++){
-                        printf("buf: %s\n", buf);
+                        // printf("buf: %s\n", buf);
                         // write from buf to file
                         if (fwrite(buf, 1, 1, disk_img) != 1) {
                             printf("error writing to file in write\n");
@@ -1250,7 +1253,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         fseek(disk_img, datablockOffset, SEEK_SET);
         for (int j = 0; j < bytesToWrite; j++){
             // write from buf to file
-            printf("buf: %s\n", buf);
+            // printf("buf: %s\n", buf);
             if (fwrite(buf, 1, 1, disk_img) != 1) {
                 printf("error writing to file in write\n");
                 fclose(disk_img);
