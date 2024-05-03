@@ -920,15 +920,24 @@ int getFileSize(struct wfs_inode* inode){
     for (int i = 0; i < N_BLOCKS; i++){
         if (inode->blocks[i] != 0){
             if (i == N_BLOCKS - 1){
+                off_t indirectBlock[N_BLOCKS];
                 fseek(disk_img, inode->blocks[i], SEEK_SET);
                 // read all off_t's in this datablock (this is our indirect block)
-                off_t curOffset;
-                for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
-                    if (fread(&curOffset, sizeof(off_t), 1, disk_img) != 1){
-                        printf("error reading offsets in indirect block\n");
-                    }
-                    if (curOffset != 0) {
-                        countDatablocks += 1;
+                // for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
+                //     if (fread(&curOffset, sizeof(off_t), 1, disk_img) != 1){
+                //         printf("error reading offsets in indirect block\n");
+                //     }
+                //     if (curOffset != 0) {
+                //         countDatablocks += 1;
+                //     }
+                // }
+                if(fread(indirectBlock, sizeof(off_t), N_BLOCKS, disk_img) != 1){
+                    printf("error reading offsets in indirect block\n");
+                    return -1;
+                }
+                for(int j = 0; j < N_BLOCKS; j++){
+                    if(indirectBlock[j] != 0){
+                        countDatablocks++;
                     }
                 }
             }else{
@@ -988,7 +997,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, special read case
                 // if offset != 0 += curBlock
-                off_t currentOffset;
+                off_t currentOffset = 0;
                 
                 for (int j = 0; j < (BLOCK_SIZE / sizeof(off_t)); j++){
                     fseek(disk_img, inode.blocks[i] + (j), SEEK_SET);
@@ -1135,7 +1144,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
         // find datablocks to try and write to -> not the first valid one, the "start_block" one is where we start writing at start_block_offset
         if (inode.blocks[i] != 0){
             // valid block
-            printf("offset for this datablock %ld\n", inode.blocks[i]);
+            //printf("offset for this datablock %ld\n", inode.blocks[i]);
             if (i == N_BLOCKS - 1){
                 // TODO indirect block, write to it
                 // find valid blocks
@@ -1143,6 +1152,7 @@ static int wfs_write(const char* path, const char *buf, size_t size, off_t offse
                 for (int j = 0; j < (BLOCK_SIZE/sizeof(off_t)); j++){
                     // read in offset
                     fseek(disk_img, inode.blocks[i] + (j), SEEK_SET);
+                    //printf("Current offset: %ld\n", currentOffset);
                     if (fread(&currentOffset, sizeof(off_t), 1, disk_img) != 1){
                         printf("error reading from indirect block\n");
                         return bytesWritten;
