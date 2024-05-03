@@ -980,7 +980,7 @@ static int wfs_read(const char* path, char *buf, size_t size, off_t offset, stru
     // }
     int numValidBlocks = getFileSize(&inode);
     if (offset > numValidBlocks * BLOCK_SIZE){
-        return -1;
+        return bytesRead;
     }
     int start_block = offset / BLOCK_SIZE;
     int start_offset_block = offset % BLOCK_SIZE;
